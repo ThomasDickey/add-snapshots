@@ -1,4 +1,11 @@
-/* $Id: add.h,v 1.3 1995/12/10 20:29:55 tom Exp $
+/******************************************************************************
+ * Copyright 1995 by Thomas E. Dickey.  All Rights Reserved.                  *
+ *                                                                            *
+ * You may freely copy or redistribute this software, so long as there is no  *
+ * profit made from its use, sale trade or reproduction. You may not change   *
+ * this copyright notice, and it must be included in any copy made.           *
+ ******************************************************************************/
+/* $Id: add.h,v 1.6 1995/12/15 00:52:34 tom Exp $
  *
  * common definitions for 'add' utility
  */
@@ -31,8 +38,6 @@
 #include	<sys/types.h>
 #include	<sys/stat.h>
 
-#include	<curses.h>
-
 #if HAVE_GETOPT
 # if HAVE_GETOPT_H
 #  include <getopt.h>
@@ -45,6 +50,14 @@
 #if HAVE_DBMALLOC_H
 #include	<dbmalloc.h>
 #define NO_LEAKS 1
+#endif
+
+#ifndef TRUE
+#define TRUE  (1)
+#endif
+
+#ifndef FALSE
+#define FALSE (0)
 #endif
 
 #ifndef EXIT_SUCCESS
@@ -99,30 +112,6 @@
 #define max(a,b) ((a)>(b)?(a):(b))
 #endif
 
-#ifdef	COLOR_PAIR
-#define	CURRENT_COLOR current_color
-#define SetColors(n)  wattron(stdscr, current_color = COLOR_PAIR(n))
-#else
-#define CURRENT_COLOR 0
-#define SetColors(n)
-#endif
-
-#ifdef  A_BOLD
-#define BeginBold()  wattron (stdscr, A_BOLD    | CURRENT_COLOR)
-#define EndOfBold()  wattroff(stdscr, A_BOLD)
-#else
-#define BeginBold()  standout()
-#define EndOfBold()  standend()
-#endif
-
-#ifdef  A_REVERSE
-#define BeginHigh()  wattron (stdscr, A_REVERSE | CURRENT_COLOR)
-#define EndOfHigh()  wattroff(stdscr, A_REVERSE)
-#else
-#define BeginHigh()  standout()
-#define EndOfHigh()  standend()
-#endif
-
 #define	MAXPATH	256
 #define	MAXBFR	132
 
@@ -137,44 +126,6 @@
 #define VI_RIGHT        'l'
 #define VI_PPAGE        CTL('B')
 #define VI_NPAGE        CTL('F')
-
-#define isKey(c,code)  ((c) == code)
-
-#ifdef KEY_UP
-# define isMoveUp(c)    ((c) == VI_UP    || isKey(c, KEY_UP))
-#else
-# define isMoveUp(c)    ((c) == VI_UP)
-#endif
-
-#ifdef KEY_DOWN
-# define isMoveDown(c)  ((c) == VI_DOWN  || isKey(c, KEY_DOWN))
-#else
-# define isMoveDown(c)  ((c) == VI_DOWN)
-#endif
-
-#ifdef KEY_LEFT
-# define isMoveLeft(c)  ((c) == VI_LEFT  || isKey(c, KEY_LEFT))
-#else
-# define isMoveLeft(c)  ((c) == VI_LEFT)
-#endif
-
-#ifdef KEY_RIGHT
-# define isMoveRight(c) ((c) == VI_RIGHT || isKey(c, KEY_RIGHT))
-#else
-# define isMoveRight(c) ((c) == VI_RIGHT)
-#endif
-
-#ifdef KEY_PPAGE
-# define isPageUp(c)    ((c) == VI_PPAGE || isKey(c, KEY_PPAGE))
-#else
-# define isPageUp(c)    ((c) == VI_PPAGE)
-#endif
-
-#ifdef KEY_NPAGE
-# define isPageDown(c)  ((c) == VI_NPAGE || isKey(c, KEY_NPAGE))
-#else
-# define isPageDown(c)  ((c) == VI_NPAGE)
-#endif
 
 #define isAscii(c)	((c) < 128)	/* isascii isn't portable */
 #define isReturn(c)     ((c) == '\r' || (c) == '\n')

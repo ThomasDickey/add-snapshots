@@ -1,0 +1,12 @@
+Option p limited to 0..7
+Usage: add [options] [scripts]
+
+Options:
+  -p num       specify precision (default=2)
+  -i interval  specify compounding-interval (default=12)
+  -o script    specify output-script name (default is the first
+               input-script name)
+
+Description:
+  Script-based adding machine that allows you to edit the operations
+  and data.

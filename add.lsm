@@ -1,0 +1,15 @@
+Begin3
+Title:          add
+Version:        v1_0
+Entered-date:   26DEC95
+Description:    ADD is a full-screen tape editor that lets the user edit a
+		calculation.  It is a curses application.  It's more suitable
+		for balancing a checkbook than a spreadsheet or any of the
+		various hand-calculator clones.
+Keywords:       calculator, curses
+Author:         dickey@clark.net (Thomas E. Dickey)
+Primary-site:   sunsite.unc.edu /pub/Linux/apps/financial
+Original-site:  ftp.clark.net:/pub/dickey/add
+Platforms:      *NIX, ANSI C
+Copying-policy: freely distributable copyrighted software
+End

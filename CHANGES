@@ -1,0 +1,30 @@
+$Id: CHANGES,v 1.3 1995/12/26 23:02:17 tom Exp $
+
+v1_0 release: 1995/12/26
+------------
+
+951226
+	Testing with 'atac' (allow scripts to be nested, and comments to be
+	wider than screen).
+
+951210
+	Fix memory leaks.  Added 'autoconf' script.
+
+941121
+	integration with 'ncurses' 1.8.6
+
+931024	revised to work with PD Curses 2.1 and Turbo C/C++ 3.0,
+	and builtin help-screen.
+
+870421
+	Added online help.
+
+860610
+	Added '(' and ')' operators.  Added '-i' option. Added A,S,M,D,I,T
+	toggles.
+
+860605
+	Added script support, and "repeat" operations (e.g., a,s,m,d,i,t).
+
+860507
+	initial version, on NCR Tower.

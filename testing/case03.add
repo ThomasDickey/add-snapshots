@@ -1,0 +1,33 @@
+:x
++10000	# initial balance
+%10	# interest (annual, computed monthly)
+-100	# payment
+i	# month 2
+s
+i	# month 3
+s
+i	# month 4
+s
+i	# month 5
+s
+i	# month 6
+s
+i	# month 7
+s
+i	# month 8
+s
+i	# month 9
+s
+i	# month 10
+s
+i	# month 11
+s
+i	# month 12
+s
+z-z.z^JHz-z.z^JL
+:w unwritable
+:w case03.out
+:r
+:0
+:1
+:99
