@@ -1,4 +1,28 @@
-$Id: CHANGES,v 1.4 1996/04/28 21:32:12 tom Exp $
+$Id: CHANGES,v 1.8 2002/12/29 20:21:12 tom Exp $
+
+2002/12/29
+----------
+	Add '~' and related commands for negating a result.
+
+	Add :f command to show the name of the script which is being edited.
+	Control/G also shows the name.
+
+	Add control/N and control/P for aliases of j, k cursor movement.
+
+	If a comment was changed, mark the script as changed.
+
+	Update configure script to use comparable macros for finding ncurses,
+	etc., vs other my programs.
+
+	Indent'd.
+
+1998/08/18
+----------
+	Look for trace() function in ncurses rather than _tracef().
+
+970526
+	Add configure-test for COLOR_PAIR, and check for gpm library upon
+	which ncurses may depend.
 
 960428
 	Use scrolling regions if curses supports them.
