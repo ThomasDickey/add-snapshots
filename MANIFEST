@@ -1,0 +1,10 @@
+MANIFEST for add, version v0_0
+--------------------------------------------------------------------------------
+MANIFEST                        this file
+add.c                           vi-like adding machine
+add.hlp                         help-file for "add"
+makefile.unx                    *NIX makefile for "add"
+patchlev.h                      patch-level of 'add' utility
+porting                         subdirectory
+porting/descrip.mms             VMS build-script for "add"
+porting/vms_link.opt            VMS link-options for "add"

@@ -1,0 +1,120 @@
+ADD: full-screen editing calculator
+---
+
+Usage:
+
+	add [-p num] [-i interval] [-o script] scripts
+
+Options:
+
+	-p num		Sets precision (number of digits after the decimal
+			place).
+	-i interval	Sets compounding interval for interest computation.
+	-o script	Specify file in which to save output transcript.
+
+	An output transcript may be saved and reloaded for further editing. 
+	Scripts are loaded from left to right (with the "output" processed
+	first).
+
+Computations:
+
+	ADD performs fixed-point computation.  It is designed for use as a
+	checkbook balancing tool.
+
+	ADD maintains a running result for each operation.  You may scroll to
+	any position in the expression list and modify the list.  Enter data by
+	typing numbers (with optional decimal point), separated by operators. 
+
+	The operators are all single-character:
+
+	'+'	begins an addition
+	'-'	begins a subtraction
+	'*'	begins a multiplication
+	'/'	begins a division
+	'%'	begins an interest computation (uses 'interval'): rate=number.
+	'$'	begins a sales-tax computation: rate=number.
+	'('	opening parenthesis. This may enclose a unary '-', more
+		parentheses, or data (implicit unary '+').
+	')'	closing parenthesis, expects another operator, not data.
+	'='	flushes out the current number, forces recomputation of the
+		running result.
+
+	A space flushes out the current number-input, and (by default) sets the
+	next operator to be the same as the current one.  You may repeat the
+	last arithmetic operation of any type:
+
+	'a'	repeats the last '+' (default 0).
+	's'	repeats the last '-' (default 0).
+	'm'	repeats the last '*' (default 1).
+	'd'	repeats the last '/' (default 1).
+	'i'	repeats the last '%' (default 4).
+	't'	repeats the last '$' (default 4).
+
+	You may toggle the prefix operator of any number by typing a single
+	character:
+
+	'A'	toggles the operator to '+'.
+	'S'	toggles the operator to '-'.
+	'M'	toggles the operator to '*'.
+	'D'	toggles the operator to '/'.
+	'I'	toggles the operator to '%'.
+	'T'	toggles the operator to '$'.
+
+Editing:
+
+	As you enter data, you may edit it.  A backspace deletes the last digit
+	of the current number (if it is visible).  Use the arrow keys or
+	vi-style 'h' and 'l' to move left and right within the line.  Other
+	editing commands include
+
+	'u'	undoes the last x/X command (restricted to restoring the
+		current data only).
+	'x'	deletes the current data.  If the data is null, deletes the
+		following line.
+	'X'	deletes the current data.  If the data is null, deletes the
+		preceding line and moves up.
+	'o'	opens a new line after the current line.
+	'O'	opens a new line before the current line.
+	'#'	edit the associated comment.
+
+	An "open" permits you to insert a new operator and data into the
+	expression list.  You may type an operator character (e.g., '+'), and
+	continue with the new data, or an operator-repeat (e.g., 'A').  In
+	either case, you may edit the new data, just as you would the old data. 
+	A 'u' (or other toggle, such as 'o', 'O', or 'q') typed after an open
+	will undo the open (and close it).
+
+Scrolling/cursor movement:
+
+	H	move to the top line on the screen.
+	M	move to the middle line on the screen.
+	L	move to the last line on the screen
+	CTL/F	scroll forward one screen.
+	CTL/B	scroll backward one screen.
+	j	move forward one line.
+	k	move backward one line.
+	z<CR>	move the current line to the top of the screen.
+	z.	move the current line to the middle of the screen.
+	z-	move the current line to the bottom of the screen.
+
+	Like VI, ADD allows you to jump to a particular line with a ":" command
+
+	:$	jumps to the last entry
+	:1	jumps to the first entry.
+
+Scripts:
+
+	Transcript files are formatted to permit line-oriented entries:
+
+		<operator><value><tab><ignored>
+
+	The transcripts saved by ADD contain the running result in the
+	"ignored" part.  To exit without saving a transcript, type 'Q'.  A
+	normal exit, by typing 'q', saves the list of operators, data (and
+	running result) in the specified file.
+
+	You can read and write scripts without leaving ADD.
+
+	:w file	writes a script to the specified file.
+	:r file	reads a script at the current entry
+	:e file	clears the current script and reads a script from the file.
