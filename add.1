@@ -1,11 +1,11 @@
 .\"*****************************************************************************
-.\" Copyright 1995 by Thomas E. Dickey.  All Rights Reserved.                  *
+.\" Copyright 1995,2002 by Thomas E. Dickey.  All Rights Reserved.             *
 .\"                                                                            *
 .\" You may freely copy or redistribute this software, so long as there is no  *
 .\" profit made from its use, sale trade or reproduction. You may not change   *
 .\" this copyright notice, and it must be included in any copy made.           *
 .\"*****************************************************************************
-.\" $Id: add.1,v 1.2 1995/12/11 01:43:15 tom Exp $
+.\" $Id: add.1,v 1.4 2002/12/29 20:36:17 tom Exp $
 .de EX
 .RS
 .nf
@@ -26,7 +26,7 @@
 \fBadd\fR \- full-screen editing calculator
 .
 .SH USAGE
-\fBadd\fI [options] [file-specifications]
+\fBadd\fP\fI [options] [file-specifications]\fP
 .
 .SH SYNOPSIS
 \fBAdd\fR is a fixed-point calculator that operates as a full-screen editor.
@@ -47,14 +47,17 @@ Scripts are loaded from left to right (with the "output" processed first).
 Command line options of \fBadd\fR are:
 .
 .TP
-.BI \-p " num"
-Sets precision (number of digits after the decimal place).
+.BI \-h
+Prints the list of options.
 .TP
 .BI \-i " interval"
 Sets compounding interval for interest computation.
 .TP
 .BI \-o " script"
 Specify file in which to save output transcript.
+.TP
+.BI \-p " num"
+Sets precision (number of digits after the decimal place).
 .
 .SH OPERATIONS
 .
@@ -68,6 +71,9 @@ begins an addition
 .TP
 .B "-"
 begins a subtraction
+.TP
+.B "~"
+negates the result
 .TP
 .B "*"
 begins a multiplication
@@ -104,6 +110,9 @@ repeats the last '+' (default 0).
 .B "s"
 repeats the last '-' (default 0).
 .TP
+.B "n"
+repeats the last '~'.
+.TP
 .B "m"
 repeats the last '*' (default 1).
 .TP
@@ -126,6 +135,9 @@ toggles the operator to '+'.
 .TP
 .B "S"
 toggles the operator to '-'.
+.TP
+.B "N"
+toggles the operator to '~'.
 .TP
 .B "M"
 toggles the operator to '*'.
@@ -240,15 +252,18 @@ running result) in the specified file.
 .PP
 You can read and write scripts without leaving \fBadd\fR.
 .
-.TP
-.BI :w " file"
-writes a script to the specified file.
-.TP
-.BI :r " file"
 reads a script at the current entry
 .TP
 .BI :e " file"
 clears the current script and reads a script from the file.
+.TP
+.BI :f
+shows the current script name.
+.TP
+.BI :r " file"
+.TP
+.BI :w " file"
+writes a script to the specified file.
 .
 .SH ENVIRONMENT
 \fBAdd\fR runs in a portable UNIX\*R environment.
@@ -263,7 +278,7 @@ In particular, the interest and sales tax computations would be more
 useful if their precision was independent of the running total.
 .
 .SH AUTHOR
-Thomas Dickey (dickey@clark.net).
+Thomas Dickey
 .
 .SH SEE ALSO
 .PP

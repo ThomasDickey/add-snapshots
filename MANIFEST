@@ -1,21 +1,23 @@
-MANIFEST for add, version v960428
+MANIFEST for add, version t20021229
 --------------------------------------------------------------------------------
 MANIFEST                        this file
 CHANGES                         summary of changes to 'add'
 COPYING                         copyright notice for 'add'
 README                          brief description of 'add'
+aclocal.m4                      autoconf macros for 'add'
 add.1                           manual-page for 'add'
 add.c                           vi-like adding machine
 add.h                           common definitions for 'add'
 add.hlp                         help-file for "add"
-add.lsm                         Linux Software Map description of ADD
+config.guess                    configure utility script
+config.sub                      configure utility script
 config_h.in                     template for config.h
+configure                       configure script
 configure.in                    configure-script template
 curses.c                        curses-interface for 'add'
 install.sh                      install script, from X11R5
 makefile.in                     makefile-template for 'add'
 mkdirs.sh                       make directory-hierarchy, from X windows
-patchlev.h                      patch-level of 'add' utility
 screen.h                        interface to $(SCREEN).c
 porting                         subdirectory
 porting/descrip.mms             VMS build-script for "add"

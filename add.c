@@ -1,12 +1,12 @@
 /******************************************************************************
- * Copyright 1996 by Thomas E. Dickey.  All Rights Reserved.                  *
+ * Copyright 1996,2002 by Thomas E. Dickey.  All Rights Reserved.             *
  *                                                                            *
  * You may freely copy or redistribute this software, so long as there is no  *
  * profit made from its use, sale trade or reproduction. You may not change   *
  * this copyright notice, and it must be included in any copy made.           *
  ******************************************************************************/
-static const char Id[] = "$Id: add.c,v 1.27 1996/04/28 21:30:17 tom Exp $";
-static const char copyrite[] = "Copyright 1996 by Thomas E. Dickey";
+static const char Id[] = "$Id: add.c,v 1.37 2002/12/29 20:52:56 tom Exp $";
+static const char copyrite[] = "Copyright 1996,2002 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -20,82 +20,86 @@ static const char copyrite[] = "Copyright 1996 by Thomas E. Dickey";
  *		operators.
  */
 
-#include <patchlev.h>
 #include <add.h>
 #include <screen.h>
 
 #define	SALLOC(s) (s *)malloc(sizeof(s))
 
 #define	SSTACK	struct	SStack
-	SSTACK	{
-	SSTACK	*next;
-	FILE	*sfp;
-	char	**sscripts;
-	};
+SSTACK {
+    SSTACK *next;
+    FILE *sfp;
+    char **sscripts;
+};
 
-static	void	Recompute (DATA *);
-static	void	ShowRange (DATA *, DATA *);
-static	void	ShowFrom  (DATA *);
+static void Recompute(DATA *);
+static void ShowRange(DATA *, DATA *);
+static void ShowFrom(DATA *);
 
 /*
  * Common data
  */
-static	char	*top_output;
-static	DATA	*all_data,	/* => beginning of data */
-		*top_data;	/* => beginning of current screen */
+static char *top_output;
+static DATA *all_data;		/* => beginning of data */
+static DATA *top_data;		/* => beginning of current screen */
 
-static  Value	val_frac;      	/* # of units in 'len_frac' (e.g., 100.0) */
-static	long	big_long;	/* largest signed 'long' value */
-static	int	interval,	/* compounding interval-divisor */
-		val_width,	/* maximum width of formatted number */
-		len_frac;	/* nominal number of digits after period */
-static	Bool	show_error,	/* suppress normal reporting until GetC() */
-		show_scripts;	/* force script to be visible, for testing */
+static Value val_frac;		/* # of units in 'len_frac' (e.g., 100.0) */
+static long big_long;		/* largest signed 'long' value */
+static int interval;		/* compounding interval-divisor */
+static int val_width;		/* maximum width of formatted number */
+static int len_frac;		/* nominal number of digits after period */
+static Bool show_error;		/* suppress normal reporting until GetC() */
+static Bool show_scripts;	/* force script to be visible, for testing */
 
 /*
  * Input-script control:
  */
-static	SSTACK	*sstack;	/* script-stack */
-static	FILE	*scriptFP;	/* current script file-pointer */
-static  char	**scriptv;	/* pointer to list of input-scripts */
-static	Bool	scriptCHG;	/* set true if there's a change after scripts */
-static	Bool	scriptNUM;	/* set true to 0..n for script number */
+static SSTACK *sstack;		/* script-stack */
+static FILE *scriptFP;		/* current script file-pointer */
+static char **scriptv;		/* pointer to list of input-scripts */
+static Bool scriptCHG;		/* set true if there's a change after scripts */
+static Bool scriptNUM;		/* set true to 0..n for script number */
 
 /*
  * Help-screen
  */
-static	DATA	*all_help;
-static	char	*helpfile;
+static DATA *all_help;
+static char *helpfile;
+
+#define CMD(op,l,u,f,s) {op, l, u, f, s}
 
 /*
  * Check to see if the given character is a legal 'add' operator (excluding
  * editing/scrolling):
  */
-static	struct	{
-	char	command;
-	char	repeats;
-	char	toggles;
-	Bool	isunary;
-	char *	explain;
-	} Commands [] = {
-		{OP_ADD,  'a',	'A',	TRUE,	"add"},
-		{OP_SUB,  's',	'S',	TRUE,	"subtract"},
-		{OP_MUL,  'm',	'M',	FALSE,	"multiply"},
-		{OP_DIV,  'd',	'D',	FALSE,	"divide"},
-		{OP_INT,  'i',	'I',	FALSE,	"interest"},
-		{OP_TAX,  't',	'T',	FALSE,	"tax"},
-		{L_PAREN, EOS,	EOS,    TRUE,	"begin group"},
-		{R_PAREN, EOS,	EOS,    FALSE,	"end group"}
-	};
+/* *INDENT-OFF* */
+static struct {
+    char command;
+    char repeats;
+    char toggles;
+    Bool isunary;
+    char *explain;
+} Commands[] = {
+    CMD(OP_ADD,  'a',	'A',	TRUE,	"add"),
+    CMD(OP_SUB,  's',	'S',	TRUE,	"subtract"),
+    CMD(OP_NEG,  'n',	'N',	FALSE,	"negate"),
+    CMD(OP_MUL,  'm',	'M',	FALSE,	"multiply"),
+    CMD(OP_DIV,  'd',	'D',	FALSE,	"divide"),
+    CMD(OP_INT,  'i',	'I',	FALSE,	"interest"),
+    CMD(OP_TAX,  't',	'T',	FALSE,	"tax"),
+    CMD(L_PAREN, EOS,	EOS,    TRUE,	"begin group"),
+    CMD(R_PAREN, EOS,	EOS,    FALSE,	"end group")
+};
+/* *INDENT-ON* */
 
 /*
  * Normally we don't show the results of replaying a script. This makes
  * loading scripts much faster.
  */
-static
-int	isVisible(void)
+static int
+isVisible(void)
 {
-	return show_scripts || (scriptFP == 0);
+    return show_scripts || (scriptFP == 0);
 }
 
 /*
@@ -104,333 +108,335 @@ int	isVisible(void)
  */
 #define	LOOKUP(func,lookup,result) \
 	static	int	func(int c) { \
-			register int j; \
+			unsigned j; \
 			for (j = 0; j < SIZEOF(Commands); j++) \
 				if (Commands[j].lookup == c) \
 					return result; \
 			return 0; \
 			}
 
-LOOKUP(isCommand,command,c)
-LOOKUP(isRepeats,repeats,Commands[j].command)
-LOOKUP(isToggles,toggles,Commands[j].command)
-LOOKUP(isUnary,command,  Commands[j].isunary)
+LOOKUP(isCommand, command, c)
+LOOKUP(isRepeats, repeats, Commands[j].command)
+LOOKUP(isToggles, toggles, Commands[j].command)
+LOOKUP(isUnary, command, Commands[j].isunary)
 
 /*
  * Find the end of the DATA list
  */
-static
-DATA *	EndOfData(void)
+     static
+     DATA *EndOfData(void)
 {
-	register DATA *np;
-	if ((np = all_data) != 0) {
-		while (!LastData(np))
-			np = np->next;
-	}
-	return np;
+    register DATA *np;
+    if ((np = all_data) != 0) {
+	while (!LastData(np))
+	    np = np->next;
+    }
+    return np;
 }
 
 /*
  * Returns true if the DATA entry is either the 0th or 1st entry in the
  * list.
  */
-static
-int	FirstData (DATA *np)
+static int
+FirstData(DATA * np)
 {
-	return (np->prev == 0 || np->prev == all_data);
+    return (np->prev == 0 || np->prev == all_data);
 }
 
 /*
  * Tests for special case of operators that cannot appear in a unary context.
  */
-static
-int	UnaryConflict (DATA *np, int chr)
+static int
+UnaryConflict(DATA * np, int chr)
 {
-	if (isCommand(chr))
-		return (!isUnary(chr) && (FirstData(np) || np->prev->psh));
-	return FALSE;
+    if (isCommand(chr))
+	return (!isUnary(chr) && (FirstData(np) || np->prev->psh));
+    return FALSE;
 }
 
 /*
  * Trim whitespace from the end of a string
  */
-static
-void	TrimString (char *src)
+static void
+TrimString(char *src)
 {
-	register char	*end = src + strlen(src);
+    register char *end = src + strlen(src);
 
-	while (end-- != src) {
-		if (isspace(*end))
-			*end = EOS;
-		else
-			break;
-	}
+    while (end-- != src) {
+	if (isspace(*end))
+	    *end = EOS;
+	else
+	    break;
+    }
 }
 
 /*
  * Allocate a string, trimming whitespace from the end for consistency.
  */
-static
-char *	AllocString (char *src)
+static char *
+AllocString(char *src)
 {
-	return strcpy(malloc((unsigned)(strlen(src)+1)), src);
+    return strcpy(malloc((unsigned) (strlen(src) + 1)), src);
 }
 
 /*
  * Allocate and initialize a DATA entry
  */
-static
-DATA *	AllocData (DATA *after)
+static DATA *
+AllocData(DATA * after)
 {
-	register DATA *np = SALLOC(DATA);
+    register DATA *np = SALLOC(DATA);
 
-	np->txt = 0;
-	np->val =
+    np->txt = 0;
+    np->val =
 	np->sum =
 	np->aux = 0.0;
-	np->cmd = EOS;
-	np->psh = FALSE;
-	np->dot = len_frac;
-	np->next =
+    np->cmd = EOS;
+    np->psh = FALSE;
+    np->dot = len_frac;
+    np->next =
 	np->prev = 0;
 
-	if (after != 0) {
-		np->prev = after;
-		np->next = after->next;
-		after->next = np;
-		if (!LastData(np))
-			np->next->prev = np;
-	} else {	/* append to the end of the list */
-		register DATA *op = EndOfData();
-		if (op != 0) {
-			op->next = np;
-			np->prev = op;
-		} else {
-			all_data = np;
-		}
+    if (after != 0) {
+	np->prev = after;
+	np->next = after->next;
+	after->next = np;
+	if (!LastData(np))
+	    np->next->prev = np;
+    } else {			/* append to the end of the list */
+	register DATA *op = EndOfData();
+	if (op != 0) {
+	    op->next = np;
+	    np->prev = op;
+	} else {
+	    all_data = np;
 	}
-	return np;
+    }
+    return np;
 }
 
 /*
  * Free and delink the data from the list.  If it was a permanent entry,
  * recompute the display from that point.  Otherwise, simply repaint.
  */
-static
-DATA *	FreeData (DATA *np, int permanent)
+static DATA *
+FreeData(DATA * np, int permanent)
 {
-	register DATA *prev = np->prev;
-	register DATA *next = np->next;
+    register DATA *prev = np->prev;
+    register DATA *next = np->next;
 
-	if (prev == 0) {	/* we're at the beginning of the list */
-		all_data = next;
-		if (next != 0)
-			next->prev = 0;
+    if (prev == 0) {		/* we're at the beginning of the list */
+	all_data = next;
+	if (next != 0)
+	    next->prev = 0;
+    } else {
+	prev->next = next;
+	if (next != 0) {
+	    next->prev = prev;
+	} else {		/* deleted the end-of-data */
+	    next = prev;
+	}
+    }
+    if (np->txt != 0)
+	free(np->txt);
+    free((char *) np);
+
+    if (top_data == np)
+	top_data = next;
+
+    if (screen_active) {
+	if (permanent) {
+	    Recompute(next);
 	} else {
-		prev->next = next;
-		if (next != 0) {
-			next->prev = prev;
-		} else {	/* deleted the end-of-data */
-			next = prev;
-		}
+	    ShowFrom(next);
 	}
-	if (np->txt != 0)
-		free(np->txt);
-	free((char *)np);
-
-	if (top_data == np)
-		top_data = next;
-
-	if (screen_active) {
-		if (permanent) {
-			Recompute(next);
-		} else {
-			ShowFrom(next);
-		}
-	}
-	return next;
+    }
+    return next;
 }
 
 /*
  * Count the data from the beginning to the specified entry.
  */
-static
-int	CountData (DATA *np)
+static int
+CountData(DATA * np)
 {
-	register int seq = 0;
-	while (np->prev != 0) {
-		seq++;
-		np = np->prev;
-	}
-	return seq;
+    register int seq = 0;
+    while (np->prev != 0) {
+	seq++;
+	np = np->prev;
+    }
+    return seq;
 }
 
-static
-int	CountFromTop (DATA *np)
+static int
+CountFromTop(DATA * np)
 {
-	return CountData(np) - CountData(top_data);
+    return CountData(np) - CountData(top_data);
 }
 
-static
-int	CountAllData(void)
+static int
+CountAllData(void)
 {
-	return CountData(EndOfData());
+    return CountData(EndOfData());
 }
 
-static
-DATA *	FindData (int seq)
+static DATA *
+FindData(int seq)
 {
-	register DATA *np = all_data;
-	while (seq-- > 0) {
-		if (np == 0)
-			break;
-		np = np->next;
-	}
-	return np;
+    register DATA *np = all_data;
+    while (seq-- > 0) {
+	if (np == 0)
+	    break;
+	np = np->next;
+    }
+    return np;
 }
 
 /*
  * Remove any fractional portion of the given value 'val', return the result.
  */
-static
-Value	Floor (Value val)
+static Value
+Floor(Value val)
 {
-	if (val > big_long) {
-		val = big_long;
-	} else if (val < -big_long) {
-		val = -big_long;
-	} else {
-		long tmp = val;
-		val = tmp;
-	}
-	return (val);
+    if (val > big_long) {
+	val = big_long;
+    } else if (val < -big_long) {
+	val = -big_long;
+    } else {
+	long tmp = val;
+	val = tmp;
+    }
+    return (val);
 }
 
-static
-Value	Ceiling (Value val)
+static Value
+Ceiling(Value val)
 {
-	Value tmp = Floor(val);
+    Value tmp = Floor(val);
 
-	if (val > 0.0 && val > tmp) {
-		tmp += 1.0;
-	} else if (val < 0.0 && val < tmp) {
-		tmp -= 1.0;
-	}
-	return (tmp);
+    if (val > 0.0 && val > tmp) {
+	tmp += 1.0;
+    } else if (val < 0.0 && val < tmp) {
+	tmp -= 1.0;
+    }
+    return (tmp);
 }
 
 /*
  * Return the last operand for the given operator, excluding the given data.
  */
-static
-Value	LastVAL (DATA *np, int cmd)
+static Value
+LastVAL(DATA * np, int cmd)
 {
+    np = np->prev;
+    while (np != 0) {
+	if (cmd == np->cmd)
+	    return (np->val);
 	np = np->prev;
-	while (np != 0) {
-		if (cmd == np->cmd)
-			return (np->val);
-		np = np->prev;
-	}
-	if (cmd == OP_MUL || cmd == OP_DIV)
-		return (1.0 * val_frac);
-	else if (cmd == OP_INT || cmd == OP_TAX)
-		return (4.0 * val_frac);
-	return (0.0);
+    }
+    if (cmd == OP_MUL || cmd == OP_DIV)
+	return (1.0 * val_frac);
+    else if (cmd == OP_INT || cmd == OP_TAX)
+	return (4.0 * val_frac);
+    return (0.0);
 }
 
 /*
  * Convert the given value 'val' to printing format (comma between groups of
  * three digits, decimal point before fractional part).
  */
-static
-char *	Format (char *dst, Value val)
+static char *
+Format(char *dst, Value val)
 {
-	int	len, j, neg = val < 0.0;
-	size_t	grp;
-	char	bfr[MAXBFR],
-		*s = dst;
+    int len, j, neg = val < 0.0;
+    size_t grp;
+    char bfr[MAXBFR], *s = dst;
 
-	if (neg) {
-		val = -val;
-		*s++ = OP_SUB;
+    if (neg) {
+	val = -val;
+	*s++ = OP_SUB;
+    }
+
+    if (val >= big_long) {
+	(void) strcpy(s, " ** overflow");
+    } else {
+	(void) sprintf(bfr, "%0*.0f", len_frac, val);
+	len = strlen(bfr) - len_frac;
+	grp = len % 3;
+	j = 0;
+
+	while (j < len) {
+	    if (grp) {
+		(void) strncpy(s, &bfr[j], grp);
+		j += grp;
+		s += grp;
+		if (j < len)
+		    *s++ = COMMA;
+	    }
+	    grp = 3;
 	}
-
-	if (val >= big_long) {
-		(void) strcpy (s, " ** overflow");
-	} else {
-		(void) sprintf (bfr, "%0*.0f", len_frac, val);
-		len = strlen(bfr) - len_frac;
-		grp = len % 3;
-		j   = 0;
-
-		while (j < len) {
-			if (grp) {
-				(void) strncpy (s, &bfr[j], grp);
-				j += grp;
-				s += grp;
-				if (j < len) *s++ = COMMA;
-			}
-			grp = 3;
-		}
-		(void) sprintf (s, ".%s", &bfr[len]);
-	}
-	return (dst);
+	(void) sprintf(s, ".%s", &bfr[len]);
+    }
+    return (dst);
 }
 
 /*
  * Convert a value to printing form, writing it on the screen:
  */
-static
-void	putval (Value val)
+static void
+putval(Value val)
 {
-	char	bfr[MAXBFR];
+    char bfr[MAXBFR];
 
-	screen_printf ("%*.*s", val_width, val_width, Format(bfr, val));
+    screen_printf("%*.*s", val_width, val_width, Format(bfr, val));
 }
 
 /*
  */
-static
-void	setval (DATA *np, int cmd, Value val, int psh)
+static void
+setval(DATA * np, int cmd, Value val, int psh)
 {
-	np->cmd = isCommand(cmd) ? cmd : OP_ADD;
-	np->val = val;
-	np->psh = psh;
+    np->cmd = isCommand(cmd) ? cmd : OP_ADD;
+    np->val = val;
+    np->psh = psh;
 }
 
 /*
  * Compute the parenthesis level of the given data entry.  This is a positive
  * number.
  */
-static
-int	LevelOf (DATA *target)
+static int
+LevelOf(DATA * target)
 {
-	register DATA *np;
-	register level = 0;
+    register DATA *np;
+    register int level = 0;
 
-	for (np = all_data; np != target; np = np->next) {
-		if (np->cmd == R_PAREN)	level--;
-		if (np->psh)		level++;
-	}
-	return level;
+    for (np = all_data; np != target; np = np->next) {
+	if (np->cmd == R_PAREN)
+	    level--;
+	if (np->psh)
+	    level++;
+    }
+    return level;
 }
 
 /*
  * Return a pointer to the last data entry in the screen.
  */
-static
-DATA *	ScreenBottom(void)
+static DATA *
+ScreenBottom(void)
 {
-	register DATA *np = top_data;
-	register int  count = screen_full;
+    register DATA *np = top_data;
+    register int count = screen_full;
 
-	while (--count > 0) {
-		if (!LastData(np))
-			np = np->next;
-		else
-			break;
-	}
-	return np;
+    while (--count > 0) {
+	if (!LastData(np))
+	    np = np->next;
+	else
+	    break;
+    }
+    return np;
 }
 
 /*
@@ -438,347 +444,350 @@ DATA *	ScreenBottom(void)
  * operand and result(s).  Return the index of this entry in the screen
  * to use in testing for completion of repainting activity.
  */
-static
-int	ShowValue (DATA *np, int *editing, Bool comment)
+static int
+ShowValue(DATA * np, int *editing, Bool comment)
 {
-	int row = CountFromTop(np);
-	int col = 0;
-	int level;
+    int row = CountFromTop(np);
+    int col = 0;
+    int level;
 
-	if (!isVisible()) {
-		if (editing != 0) {
-			editing[0] =
-			editing[1] = 0;
-		}
-	} else if (row >= 0 && row < screen_full) {
-		char	cmd = isprint(np->cmd) ? np->cmd : '?';
-
-		screen_set_position(row+1, col);
-		screen_clear_endline();
-		if (np->cmd != EOS) {
-			for (level = LevelOf(np); level > 0; level--)
-				screen_puts(". ");
-			if (editing != 0) {
-				screen_set_reverse(TRUE);
-				screen_printf(" %c>>", cmd);
-				screen_set_reverse(FALSE);
-			} else {
-				screen_printf(" %c: ", cmd);
-			}
-
-			if (editing != 0) {
-				*editing = screen_col();
-				screen_set_reverse(TRUE);
-			}
-
-			if ((cmd == R_PAREN) || ((editing != 0) && !comment))
-				screen_printf ("%*.*s", val_width, val_width, " ");
-			else if (np->psh)
-				screen_putc(L_PAREN);
-			else
-				putval(np->val);
-
-			if (editing != 0)
-				screen_set_reverse(FALSE);
-
-			if (!np->psh) {
-				screen_puts(" ");
-				if (editing != 0) screen_set_bold(TRUE);
-				putval(np->sum);
-				if (editing != 0) screen_set_bold(FALSE);
-			}
-			if (cmd == OP_INT || cmd == OP_TAX) {
-				screen_puts(" ");
-				putval(np->aux);
-			}
-
-			col = screen_col();
-			if (editing != 0)
-				editing[1] = col;
-			col += 3;
-			if ((np->txt != 0) && screen_cols_left(col) > 3)
-				screen_puts(" # ");
-		}
-
-		if ((np->txt != 0)
-		 && screen_cols_left(col) > 0) {
-			screen_printf("%.*s", screen_cols_left(col), np->txt);
-		}
-		if (LastData(np) && screen_rows_left(row) > 1) {
-			screen_set_position(row+2, 0);
-			screen_clear_bottom();
-		}
+    if (!isVisible()) {
+	if (editing != 0) {
+	    editing[0] =
+		editing[1] = 0;
 	}
-	return row;
+    } else if (row >= 0 && row < screen_full) {
+	char cmd = isprint(np->cmd) ? np->cmd : '?';
+
+	screen_set_position(row + 1, col);
+	screen_clear_endline();
+	if (np->cmd != EOS) {
+	    for (level = LevelOf(np); level > 0; level--)
+		screen_puts(". ");
+	    if (editing != 0) {
+		screen_set_reverse(TRUE);
+		screen_printf(" %c>>", cmd);
+		screen_set_reverse(FALSE);
+	    } else {
+		screen_printf(" %c: ", cmd);
+	    }
+
+	    if (editing != 0) {
+		*editing = screen_col();
+		screen_set_reverse(TRUE);
+	    }
+
+	    if ((cmd == R_PAREN) || ((editing != 0) && !comment))
+		screen_printf("%*.*s", val_width, val_width, " ");
+	    else if (np->psh)
+		screen_putc(L_PAREN);
+	    else
+		putval(np->val);
+
+	    if (editing != 0)
+		screen_set_reverse(FALSE);
+
+	    if (!np->psh) {
+		screen_puts(" ");
+		if (editing != 0)
+		    screen_set_bold(TRUE);
+		putval(np->sum);
+		if (editing != 0)
+		    screen_set_bold(FALSE);
+	    }
+	    if (cmd == OP_INT || cmd == OP_TAX) {
+		screen_puts(" ");
+		putval(np->aux);
+	    }
+
+	    col = screen_col();
+	    if (editing != 0)
+		editing[1] = col;
+	    col += 3;
+	    if ((np->txt != 0) && screen_cols_left(col) > 3)
+		screen_puts(" # ");
+	}
+
+	if ((np->txt != 0)
+	    && screen_cols_left(col) > 0) {
+	    screen_printf("%.*s", screen_cols_left(col), np->txt);
+	}
+	if (LastData(np) && screen_rows_left(row) > 1) {
+	    screen_set_position(row + 2, 0);
+	    screen_clear_bottom();
+	}
+    }
+    return row;
 }
 
-static
-void	ShowRange (DATA *first, DATA *last)
+static void
+ShowRange(DATA * first, DATA * last)
 {
-	register DATA *np = first;
-	while (np != last) {
-		if (ShowValue(np, (int *)0, FALSE) >= screen_full)
-			break;
-		np = np->next;
-	}
+    register DATA *np = first;
+    while (np != last) {
+	if (ShowValue(np, (int *) 0, FALSE) >= screen_full)
+	    break;
+	np = np->next;
+    }
 }
 
-static
-void	ShowFrom (DATA *first)
+static void
+ShowFrom(DATA * first)
 {
-	ShowRange(first, (DATA *)0);
+    ShowRange(first, (DATA *) 0);
 }
 
 /*
  * (Re)display the status line at the top of the screen.
  */
-static
-void	ShowStatus (DATA *np, int opened)
+static void
+ShowStatus(DATA * np, int opened)
 {
-	int	seq = CountData(np);
-	int	top = CountData(top_data);
-	DATA	*last = EndOfData();
-	register int j, c;
-	char	buffer[BUFSIZ];
+    int seq = CountData(np);
+    int top = CountData(top_data);
+    DATA *last = EndOfData();
+    unsigned j;
+    int c;
+    char buffer[BUFSIZ];
 
-	if (!show_error && isVisible()) {
-		screen_set_bold(TRUE);
-		screen_set_position (0,0);
-		screen_clear_endline();
-		(void) sprintf (buffer, "%d of %d", seq, CountData(last));
-		screen_set_position (0, screen_cols_left((int)strlen(buffer)));
-		screen_puts(buffer);
-		screen_set_position (0,0);
-		if (opened < 0) {
-			screen_puts("Edit comment (press return to exit)");
-		} else if (opened > 0) {
-			screen_puts("Open-line expecting operator ");
-			for (j = 0; j < SIZEOF(Commands); j++) {
-				c = Commands[j].command;
-				if (!isUnary(c) && FirstData(np))
-					continue;
-				if ((c = Commands[j].command) == L_PAREN)
-					continue;
-				if ((c == R_PAREN) && (opened < 2))
-					continue;
-				screen_putc(c);
-			}
-			screen_puts(" or oO to cancel");
-		} else if (np->cmd != EOS) { /* editing a value */
-			for (j = 0; j < SIZEOF(Commands); j++) {
-				if (Commands[j].command == np->cmd) {
-					screen_printf("  %s", Commands[j].explain);
-					break;
-				}
-			}
-			screen_set_position (0, 5 + val_width);
-			putval(last->sum);
-			screen_puts(" -- total");
+    if (!show_error && isVisible()) {
+	screen_set_bold(TRUE);
+	screen_set_position(0, 0);
+	screen_clear_endline();
+	(void) sprintf(buffer, "%d of %d", seq, CountData(last));
+	screen_set_position(0, screen_cols_left((int) strlen(buffer)));
+	screen_puts(buffer);
+	screen_set_position(0, 0);
+	if (opened < 0) {
+	    screen_puts("Edit comment (press return to exit)");
+	} else if (opened > 0) {
+	    screen_puts("Open-line expecting operator ");
+	    for (j = 0; j < SIZEOF(Commands); j++) {
+		c = Commands[j].command;
+		if (!isUnary(c) && FirstData(np))
+		    continue;
+		if ((c = Commands[j].command) == L_PAREN)
+		    continue;
+		if ((c == R_PAREN) && (opened < 2))
+		    continue;
+		screen_putc(c);
+	    }
+	    screen_puts(" or oO to cancel");
+	} else if (np->cmd != EOS) {	/* editing a value */
+	    for (j = 0; j < SIZEOF(Commands); j++) {
+		if (Commands[j].command == np->cmd) {
+		    screen_printf("  %s", Commands[j].explain);
+		    break;
 		}
-		screen_set_bold(FALSE);
+	    }
+	    screen_set_position(0, 5 + val_width);
+	    putval(last->sum);
+	    screen_puts(" -- total");
 	}
-	if (isVisible())
-		screen_set_position(seq-top+1,0);
+	screen_set_bold(FALSE);
+    }
+    if (isVisible())
+	screen_set_position(seq - top + 1, 0);
 }
 
 /*
  * Show text in the status line
  */
-static
-void	ShowInfo (char *msg)
+static void
+ShowInfo(char *msg)
 {
-	if (screen_active) {	/* we've started curses */
-		screen_message("%s", msg);
-	} else {
-		(void) printf("%s\n", msg);
-	}
+    if (screen_active) {	/* we've started curses */
+	screen_message("%s", msg);
+    } else {
+	(void) printf("%s\n", msg);
+    }
 }
 
 /*
  * Show an error-message in the status line
  */
-static
-void	ShowError (char *msg, char *arg)
+static void
+ShowError(char *msg, char *arg)
 {
-	static	const	char	format[] = "?? %s \"%s\"";
+    static const char format[] = "?? %s \"%s\"";
 
-	if (screen_active) {	/* we've started curses */
-		screen_message(format, msg, arg);
-		show_error = TRUE;
-	} else {
-		(void) fprintf(stderr, format, msg, arg);
-		(void) fprintf(stderr, "\n");
-		perror("add");
-		exit(errno);
-	}
+    if (screen_active) {	/* we've started curses */
+	screen_message(format, msg, arg);
+	show_error = TRUE;
+    } else {
+	(void) fprintf(stderr, format, msg, arg);
+	(void) fprintf(stderr, "\n");
+	perror("add");
+	exit(errno);
+    }
 }
 
 /*
  * Returns true if a file exists, -true if it isn't a file, false if neither.
  */
-static
-int	Fexists (char *path)
+static int
+Fexists(char *path)
 {
-	struct	stat	sb;
-	if (*path == EOS)
-		ShowError("No filename specified", path);
-	if (stat(path, &sb) < 0)
-		return FALSE;
-	if ((sb.st_mode & S_IFMT) != S_IFREG) {
-		ShowError("Not a file", path);
-		return -TRUE;
-	}
-	return TRUE;
+    struct stat sb;
+    if (*path == EOS)
+	ShowError("No filename specified", path);
+    if (stat(path, &sb) < 0)
+	return FALSE;
+    if ((sb.st_mode & S_IFMT) != S_IFREG) {
+	ShowError("Not a file", path);
+	return -TRUE;
+    }
+    return TRUE;
 }
 
 /*
  * Check file-access for writing a script
  */
-static
-int	Ok2Write (char *path)
+static int
+Ok2Write(char *path)
 {
-	if (Fexists(path) != -TRUE
-	 && access(path, 02) != 0
-	 && errno != ENOENT) {
-		ShowError("No write access", path);
-	} else {
-		return TRUE;
-	}
-	return FALSE;
+    if (Fexists(path) != -TRUE
+	&& access(path, 02) != 0
+	&& errno != ENOENT) {
+	ShowError("No write access", path);
+    } else {
+	return TRUE;
+    }
+    return FALSE;
 }
 
 /*
  * Write the current list of data as an ADD-script
  */
-static
-void	PutScript (char *path)
+static void
+PutScript(char *path)
 {
-	DATA	*np;
-	FILE	*fp = (path && *path) ? fopen(path, "w") : 0;
-	char	buffer[MAXBFR];
-	int	count = 0;
+    DATA *np;
+    FILE *fp = (path && *path) ? fopen(path, "w") : 0;
+    char buffer[MAXBFR];
+    int count = 0;
 
-	if (fp == 0) {
-		ShowError("Cannot open output", path);
-		return;
-	}
+    if (fp == 0) {
+	ShowError("Cannot open output", path);
+	return;
+    }
 
-	(void) sprintf (buffer, "Writing results to \"%s\"", path);
-	ShowInfo(buffer);
+    (void) sprintf(buffer, "Writing results to \"%s\"", path);
+    ShowInfo(buffer);
 
-	for (np = all_data->next; np != 0; np = np->next) {
-		if (np->cmd == EOS && np->next == 0)
-			break;
-		(void) fprintf (fp, "%c", np->cmd);
-		if (np->psh)
-			(void) fprintf (fp, "%c", L_PAREN);
-		else if (np->cmd != R_PAREN)
-			(void) fprintf (fp, "%s", Format(buffer, np->val));
-		if (!np->psh)
-			(void) fprintf (fp, "\t%s", Format(buffer, np->sum));
-		if (np->cmd == OP_INT
-		 || np->cmd == OP_TAX)
-			(void) fprintf(fp, "\t%s", Format(buffer, np->aux));
-		if (np->txt != 0)
-			(void) fprintf(fp, "\t#%s", np->txt);
-		(void) fprintf (fp, "\n");
-		count++;
-	}
-	(void) fclose (fp);
+    for (np = all_data->next; np != 0; np = np->next) {
+	if (np->cmd == EOS && np->next == 0)
+	    break;
+	(void) fprintf(fp, "%c", np->cmd);
+	if (np->psh)
+	    (void) fprintf(fp, "%c", L_PAREN);
+	else if (np->cmd != R_PAREN)
+	    (void) fprintf(fp, "%s", Format(buffer, np->val));
+	if (!np->psh)
+	    (void) fprintf(fp, "\t%s", Format(buffer, np->sum));
+	if (np->cmd == OP_INT
+	    || np->cmd == OP_TAX)
+	    (void) fprintf(fp, "\t%s", Format(buffer, np->aux));
+	if (np->txt != 0)
+	    (void) fprintf(fp, "\t#%s", np->txt);
+	(void) fprintf(fp, "\n");
+	count++;
+    }
+    (void) fclose(fp);
 
-	/* If we've written the specified output, reset the changed-flag */
-	if (!strcmp(path, top_output))
-		scriptCHG = FALSE;
+    /* If we've written the specified output, reset the changed-flag */
+    if (!strcmp(path, top_output))
+	scriptCHG = FALSE;
 
-	(void) sprintf (buffer, "Wrote %d line%s to \"%s\"",
-		count, count != 1 ? "s" : "", path);
-	ShowInfo(buffer);
-	show_error++;		/* force the message to stay until next char */
+    (void) sprintf(buffer, "Wrote %d line%s to \"%s\"",
+		   count, count != 1 ? "s" : "", path);
+    ShowInfo(buffer);
+    show_error++;		/* force the message to stay until next char */
 }
 
 /*
  * Check file-access for reading a script.
  */
-static
-int	Ok2Read (char *path)
+static int
+Ok2Read(char *path)
 {
-	if (Fexists(path) != TRUE || access(path, 04) != 0)
-		ShowError("No read access", path);
-	else
-		return TRUE;
-	return FALSE;
+    if (Fexists(path) != TRUE || access(path, 04) != 0)
+	ShowError("No read access", path);
+    else
+	return TRUE;
+    return FALSE;
 }
 
 /*
  * Save the current script-state and nest a new one.
  */
-static
-void	PushScripts(char *script)
+static void
+PushScripts(char *script)
 {
-	SSTACK	*p = SALLOC(SSTACK);
-	p->next     = sstack;
-	p->sfp      = scriptFP;
-	p->sscripts = scriptv;
-	sstack      = p;
+    SSTACK *p = SALLOC(SSTACK);
+    p->next = sstack;
+    p->sfp = scriptFP;
+    p->sscripts = scriptv;
+    sstack = p;
 
-	scriptFP    = 0;
-	scriptv     = (char **)calloc(2, sizeof(char *));
-	scriptv[0]  = AllocString(script);
+    scriptFP = 0;
+    scriptv = (char **) calloc(2, sizeof(char *));
+    scriptv[0] = AllocString(script);
 }
 
 /*
  * Restore a previous script-state, if any.
  */
-static
-int	PopScripts(void)
+static int
+PopScripts(void)
 {
-	SSTACK	*p;
+    SSTACK *p;
 
-	scriptFP = 0;
-	scriptv  = 0;
-	if ((p = sstack) != 0) {
-		scriptFP = p->sfp;
-		scriptv  = p->sscripts;
-		sstack   = p->next;
-	}
-	return (scriptFP != 0);
+    scriptFP = 0;
+    scriptv = 0;
+    if ((p = sstack) != 0) {
+	scriptFP = p->sfp;
+	scriptv = p->sscripts;
+	sstack = p->next;
+    }
+    return (scriptFP != 0);
 }
 
 /*
  * On end-of-file, go to the next script (or resume the parent script)
  */
-static
-void	NextScript(void)
+static void
+NextScript(void)
 {
-	(void) fclose(scriptFP);
-	scriptFP = 0;
-	if (!*(++scriptv))
-		PopScripts();
+    (void) fclose(scriptFP);
+    scriptFP = 0;
+    if (!*(++scriptv))
+	PopScripts();
 }
 
 /*
  * Read from a script, checking for end-of-file, and performing control-char
  * conversion.
  */
-static
-int	ReadScript(void)
+static int
+ReadScript(void)
 {
-	int	c = fgetc(scriptFP);
-	if (feof(scriptFP) || ferror(scriptFP)) {
-		NextScript();
-		if (!scriptNUM++)
-			scriptCHG = FALSE;
-		c = EOF;
-	} else if (c == '^') {
-		c = ReadScript();
-		if (c == EOF)
-			c = '^';	/* we'll get an EOF on the next call */
-		else if (c == '?')
-			c = '\177';	/* delete */
-		else
-			c &= 037;
-	}
-	return c;
+    int c = fgetc(scriptFP);
+    if (feof(scriptFP) || ferror(scriptFP)) {
+	NextScript();
+	if (!scriptNUM++)
+	    scriptCHG = FALSE;
+	c = EOF;
+    } else if (c == '^') {
+	c = ReadScript();
+	if (c == EOF)
+	    c = '^';		/* we'll get an EOF on the next call */
+	else if (c == '?')
+	    c = '\177';		/* delete */
+	else
+	    c &= 037;
+    }
+    return c;
 }
 
 /*
@@ -787,122 +796,121 @@ int	ReadScript(void)
  *	<operator><value><tab><ignored>
  * to permit line-oriented entries.
  */
-static
-int	GetScript(void)
+static int
+GetScript(void)
 {
-	static	int	first;
-	static	int	ignored;
-	static	int	comment;
-	register int c;
+    static int first;
+    static int ignored;
+    static int comment;
+    register int c;
 
-	while (scriptv != 0 && *scriptv != 0) {
-		int was_invisible = !isVisible();
+    while (scriptv != 0 && *scriptv != 0) {
+	int was_invisible = !isVisible();
 
-		if (scriptFP == 0) {
-			scriptFP = fopen(*scriptv, "r");
-			if (scriptFP == 0) {
-				ShowError("Cannot read", *scriptv);
-				scriptv++;
-			} else {
-				ShowInfo("Reading script");
-				first = TRUE;
-			}
-			continue;
-		}
-		while (scriptFP != 0) {
-			if ((c = ReadScript()) == EOF)
-				continue;
-			if (c == '#' || c == COLON) {
-				comment = TRUE;
-				ignored = FALSE;
-			} else if (!comment && (c == '\t')) {
-				ignored = TRUE;
-			}
-			if (isReturn(c))
-				first = TRUE;
-			if (ignored && isReturn(c)) {
-				ignored = FALSE;
-			} else if (!ignored) {
-				if (isReturn(c)) {
-					comment = FALSE;
-				} else if (first) {
-					if (isdigit(c)) {
-						ungetc(c, scriptFP);
-						c = OP_ADD;
-					}
-					first = FALSE;
-				}
-				return (c);
-			}
-		}
-		/* Finally, paint the screen if I wasn't doing so before */
-		if (was_invisible) {
-			int	editcols[3];
-			DATA *last = EndOfData();
-			ShowStatus(last, FALSE);
-			ShowRange(top_data, last);
-			ShowValue(last, editcols, FALSE);
-			first = TRUE;
-			return EQUALS;	/* flush out the last line */
-		}
+	if (scriptFP == 0) {
+	    scriptFP = fopen(*scriptv, "r");
+	    if (scriptFP == 0) {
+		ShowError("Cannot read", *scriptv);
+		scriptv++;
+	    } else {
+		ShowInfo("Reading script");
+		first = TRUE;
+	    }
+	    continue;
 	}
-
-	if (first) {
-		if (scriptNUM == 1)
-			scriptCHG = FALSE;
-		first = FALSE;
+	while (scriptFP != 0) {
+	    if ((c = ReadScript()) == EOF)
+		continue;
+	    if (c == '#' || c == COLON) {
+		comment = TRUE;
+		ignored = FALSE;
+	    } else if (!comment && (c == '\t')) {
+		ignored = TRUE;
+	    }
+	    if (isReturn(c))
+		first = TRUE;
+	    if (ignored && isReturn(c)) {
+		ignored = FALSE;
+	    } else if (!ignored) {
+		if (isReturn(c)) {
+		    comment = FALSE;
+		} else if (first) {
+		    if (isdigit(c)) {
+			ungetc(c, scriptFP);
+			c = OP_ADD;
+		    }
+		    first = FALSE;
+		}
+		return (c);
+	    }
 	}
-	return EOS;
+	/* Finally, paint the screen if I wasn't doing so before */
+	if (was_invisible) {
+	    int editcols[3];
+	    DATA *last = EndOfData();
+	    ShowStatus(last, FALSE);
+	    ShowRange(top_data, last);
+	    ShowValue(last, editcols, FALSE);
+	    first = TRUE;
+	    return EQUALS;	/* flush out the last line */
+	}
+    }
+
+    if (first) {
+	if (scriptNUM == 1)
+	    scriptCHG = FALSE;
+	first = FALSE;
+    }
+    return EOS;
 }
 
 /*
  * Read a character from an input-script, if it is available.  Otherwise, read
  * directly from the terminal.
  */
-static
-int	GetC(void)
+static int
+GetC(void)
 {
-	register int c;
+    register int c;
 
-	if ((c = GetScript()) == EOS) {
-		show_error = FALSE;
-		c = screen_getc();
-	}
-	return (c);
+    if ((c = GetScript()) == EOS) {
+	show_error = FALSE;
+	c = screen_getc();
+    }
+    return (c);
 }
 
 /*
  * Given a string, offset into it and insert-position, delete the character at
  * that offset, both from the string and screen.  Return the resulting offset.
  */
-static
-int	DeleteChar (char *buffer, int offset, int pos, int limit)
+static int
+DeleteChar(char *buffer, int offset, int pos, int limit)
 {
-	int	y, x, col;
-	register char	*t;
+    int y, x, col;
+    register char *t;
 
-	/* delete from the actual buffer */
-	for (t = buffer+offset; (t[0] = t[1]) != EOS; t++)
-		;
+    /* delete from the actual buffer */
+    for (t = buffer + offset; (t[0] = t[1]) != EOS; t++) ;
 
-	if (isVisible()) {	/* update the display */
-		y = screen_row();
-		x = screen_col();	/* get current insert-position */
-		col = x - pos + offset;	/* assume pos < len, offset < len */
-		screen_set_position(y, col);
-		screen_delete_char();
-		if (limit > 0 && strlen(buffer) < limit) {
-			screen_set_position(y, col - offset);
-			screen_insert_char(' ');
-			x++;
-		}
-		if (pos > offset)
-			x--;
-		screen_set_position(y, x);
+    if (isVisible()) {		/* update the display */
+	y = screen_row();
+	x = screen_col();	/* get current insert-position */
+	col = x - pos + offset;	/* assume pos < len, offset < len */
+	screen_set_position(y, col);
+	screen_delete_char();
+	if (limit > 0 && (int) strlen(buffer) < limit) {
+	    screen_set_position(y, col - offset);
+	    screen_insert_char(' ');
+	    x++;
 	}
 	if (pos > offset)
-		pos--;
-	return pos;
+	    x--;
+	screen_set_position(y, x);
+    }
+    if (pos > offset)
+	pos--;
+    return pos;
 }
 
 /*
@@ -910,192 +918,213 @@ int	DeleteChar (char *buffer, int offset, int pos, int limit)
  * position.  If the "rmargin" parameter is nonzero, we keep the buffer
  * right-justified to that limit.
  */
-static
-int	InsertChar (char *buffer, int chr, int pos, int lmargin, int rmargin, int *offset)
+static int
+InsertChar(char *buffer, int chr, int pos, int lmargin, int rmargin, int *offset)
 {
-	int	y, x;
-	int	len	= strlen(buffer);
-	register char	*t;
+    int y, x;
+    int len = strlen(buffer);
+    register char *t;
 
-	/* perform the actual insertion into the buffer */
-	for (t = buffer + len; ; t--) {
-		t[1] = t[0];
-		if (t == buffer+pos)
-			break;
-	}
-	t[0] = chr;
+    /* perform the actual insertion into the buffer */
+    for (t = buffer + len;; t--) {
+	t[1] = t[0];
+	if (t == buffer + pos)
+	    break;
+    }
+    t[0] = chr;
 
-	if (isVisible()) {	/* update the display on the screen */
-		y = screen_row();
-		x = screen_col();
-		if (screen_cols_left(x) > 0) {
-			if (rmargin > 0) {
-				x--;
-				screen_set_position(y, x - pos);
-				screen_delete_char();
-				screen_set_position(y, x);
-			}
-			screen_insert_char(chr);
-			screen_set_position(y,x+1);
-		} else if (offset != 0) {
-			screen_set_position(y, lmargin);
-			screen_delete_char();
-			screen_set_position(y, x-1);
-			screen_insert_char(chr);
-			screen_set_position(y, x);
-				*offset += 1;
-		} else {
-			screen_alarm();
-		}
+    if (isVisible()) {		/* update the display on the screen */
+	y = screen_row();
+	x = screen_col();
+	if (screen_cols_left(x) > 0) {
+	    if (rmargin > 0) {
+		x--;
+		screen_set_position(y, x - pos);
+		screen_delete_char();
+		screen_set_position(y, x);
+	    }
+	    screen_insert_char(chr);
+	    screen_set_position(y, x + 1);
+	} else if (offset != 0) {
+	    screen_set_position(y, lmargin);
+	    screen_delete_char();
+	    screen_set_position(y, x - 1);
+	    screen_insert_char(chr);
+	    screen_set_position(y, x);
+	    *offset += 1;
+	} else {
+	    screen_alarm();
 	}
-	return pos+1;
+    }
+    return pos + 1;
 }
 
 /*
  * Delete from the buffer the character to the left of the given col-position.
  */
-static
-int	doDeleteChar (char *buffer, int col, int limit)
+static int
+doDeleteChar(char *buffer, int col, int limit)
 {
-	if (col > 0) {
-		col = DeleteChar(buffer, col-1, col, limit);
-	} else {
-		screen_alarm();
-	}
-	return col;
+    if (col > 0) {
+	col = DeleteChar(buffer, col - 1, col, limit);
+    } else {
+	screen_alarm();
+    }
+    return col;
 }
 
 /*
  * Returns the index of the decimal-point in the given buffer (or -1 if not
  * found).
  */
-static
-int	DecimalPoint (char *buffer)
+static int
+DecimalPoint(char *buffer)
 {
-	register char *dot = strchr(buffer, PERIOD);
-	if (dot != 0)
-		return (int)(dot-buffer);
-	return -1;
+    register char *dot = strchr(buffer, PERIOD);
+
+    if (dot != 0)
+	return (int) (dot - buffer);
+    return -1;
 }
 
 /*
  * Return the sequence-pointer of the left-parenthesis enclosing the given
  * operand-set at 'np'.
  */
-static
-DATA *	Balance (DATA *np, int level)
+static DATA *
+Balance(DATA * np, int level)
 {
-	int	target = level;
-	while (np->prev != 0) {
-		if (np->cmd == R_PAREN)		level++;
-		else if (np->psh)		level--;
-		if (level <= target)		break;	/* unbalanced */
-		np = np->prev;
-	}
-	return (level == 0) ? np : 0;
+    int target = level;
+
+    while (np->prev != 0) {
+	if (np->cmd == R_PAREN)
+	    level++;
+	else if (np->psh)
+	    level--;
+	if (level <= target)
+	    break;		/* unbalanced */
+	np = np->prev;
+    }
+    return (level == 0) ? np : 0;
+}
+
+static void
+ShowScriptName(void)
+{
+    while (screen_move_left(screen_col() + 1, 0) > 0) {
+	;
+    }
+    if (*top_output) {
+	screen_printf("script: %s", top_output);
+    } else {
+	screen_puts("no script");
+    }
+    screen_clear_endline();
+    (void) screen_getc();
 }
 
 /*
  * Edit an arbitrary buffer, starting at the current screen position.
  */
-static
-void	EditBuffer (char *buffer, int length)
+static void
+EditBuffer(char *buffer, int length)
 {
-	int	end, chr;
-	int	col  = strlen(buffer);
-	int	done = FALSE;
-	int	offset = 0;
-	int	lmargin = screen_col();
-	int	shown = FALSE;
+    int end, chr;
+    int col = strlen(buffer);
+    int done = FALSE;
+    int offset = 0;
+    int lmargin = screen_col();
+    int shown = FALSE;
 
-	end = screen_cols_left(lmargin);
-	end = min(end, length);
-	if (end < strlen(buffer))
-		offset = strlen(buffer) - end;
-	while (!done) {
-		while (col - offset < 0) {
-			offset--;
-			shown = FALSE;
-		}
-		while (col - offset > end) {
-			offset++;
-			shown = FALSE;
-		}
-		if (isVisible() && !shown) {
-			int x;
-			screen_set_position(screen_row(), lmargin);
-			screen_printf("%.*s", end, buffer + offset);
-			if(screen_cols_left(x = screen_col()) > 0) {
-				screen_set_position(screen_row(), x);
-				screen_clear_endline();
-			}
-			screen_set_position(screen_row(), lmargin + col - offset);
-			shown = TRUE;
-		}
-		chr = GetC();
-		if (isReturn(chr)) {
-			done = TRUE;
-		} else if (isAscii(chr) && isprint(chr)) {
-			if (strlen(buffer) < length-1)
-				col = InsertChar(buffer, chr, col, lmargin, 0, &offset);
-			else
-				screen_alarm();
-		} else if (is_delete_left(chr)) {
-			col = doDeleteChar(buffer, col, 0);
-		} else if (is_left_char(chr)) {
-			col = screen_move_left(col, 0);
-		} else if (is_right_char(chr)) {
-			col = screen_move_right(col, (int)strlen(buffer));
-		} else if (is_home_char(chr)) {
-			while (col > 0)
-				col = screen_move_left(col, 0);
-		} else if (is_end_char(chr)) {
-			while (col < (int)strlen(buffer))
-				col = screen_move_right(col, (int)strlen(buffer));
-		} else {
-			screen_alarm();
-		}
+    end = screen_cols_left(lmargin);
+    end = min(end, length);
+    if (end < (int) strlen(buffer))
+	offset = strlen(buffer) - end;
+    while (!done) {
+	while (col - offset < 0) {
+	    offset--;
+	    shown = FALSE;
 	}
+	while (col - offset > end) {
+	    offset++;
+	    shown = FALSE;
+	}
+	if (isVisible() && !shown) {
+	    int x;
+	    screen_set_position(screen_row(), lmargin);
+	    screen_printf("%.*s", end, buffer + offset);
+	    if (screen_cols_left(x = screen_col()) > 0) {
+		screen_set_position(screen_row(), x);
+		screen_clear_endline();
+	    }
+	    screen_set_position(screen_row(), lmargin + col - offset);
+	    shown = TRUE;
+	}
+	chr = GetC();
+	if (isReturn(chr)) {
+	    done = TRUE;
+	} else if (isAscii(chr) && isprint(chr)) {
+	    if ((int) strlen(buffer) < length - 1)
+		col = InsertChar(buffer, chr, col, lmargin, 0, &offset);
+	    else
+		screen_alarm();
+	} else if (is_delete_left(chr)) {
+	    col = doDeleteChar(buffer, col, 0);
+	} else if (is_left_char(chr)) {
+	    col = screen_move_left(col, 0);
+	} else if (is_right_char(chr)) {
+	    col = screen_move_right(col, (int) strlen(buffer));
+	} else if (is_home_char(chr)) {
+	    while (col > 0)
+		col = screen_move_left(col, 0);
+	} else if (is_end_char(chr)) {
+	    while (col < (int) strlen(buffer))
+		col = screen_move_right(col, (int) strlen(buffer));
+	} else {
+	    screen_alarm();
+	}
+    }
 }
 
 /*
  * Edit the comment-field
  */
-static
-void	EditComment (DATA *np)
+static void
+EditComment(DATA * np)
 {
-	char	buffer[BUFSIZ];
-	int	row,
-		editcols[3];
+    char buffer[BUFSIZ];
+    int row;
+    int editcols[3];
 
-	(void)strcpy(buffer, np->txt != 0 ? np->txt : "");
+    (void) strcpy(buffer, np->txt != 0 ? np->txt : "");
 
-	ShowStatus(np, -1);
-	row = ShowValue(np, editcols, TRUE) + 1;
-	if (isVisible()) {
-		screen_set_position(row, editcols[1]);
-		screen_puts(" # ");
+    ShowStatus(np, -1);
+    row = ShowValue(np, editcols, TRUE) + 1;
+    if (isVisible()) {
+	screen_set_position(row, editcols[1]);
+	screen_puts(" # ");
+    }
+    EditBuffer(buffer, sizeof(buffer));
+    TrimString(buffer);
+
+    if (*buffer != EOS || (np->txt != 0)) {
+	if (np->txt != 0) {
+	    if (!strcmp(buffer, np->txt))
+		return;		/* no change needed */
+	    free(np->txt);
 	}
-	EditBuffer(buffer, sizeof(buffer));
-	TrimString(buffer);
-
-	if (*buffer != EOS || (np->txt != 0)) {
-		if (np->txt != 0) {
-			if (!strcmp(buffer, np->txt))
-				return;	/* no change needed */
-			free(np->txt);
-		}
-		np->txt = (*buffer != EOS) ? AllocString(buffer) : 0;
-	}
+	np->txt = (*buffer != EOS) ? AllocString(buffer) : 0;
+	scriptCHG = TRUE;
+    }
 }
 
 /*
  * Returns true if the given entry has editable data
  */
-static
-int	HasData(DATA *np)
+static int
+HasData(DATA * np)
 {
-	return !LastData(np) || (np->val != 0.0);
+    return !LastData(np) || (np->val != 0.0);
 }
 
 /*
@@ -1112,257 +1141,262 @@ int	HasData(DATA *np)
  * Returns:
  *	The terminating character (e.g., an operator or command).
  */
-static
-int	EditValue (DATA *np, int *len_, Value *val_, int edit)
+static int
+EditValue(DATA * np, int *len_, Value * val_, int edit)
 {
-	int	c,
-		row,
-		col,			/* current insert-position */
-		editcols[3],
-		done = FALSE,
-		was_visible = isVisible(),
-		lmargin = screen_col(),
-		nesting;		/* if we find left parenthesis rather than number */
-	char	buffer[MAXBFR];		/* current input value */
+    int c;
+    int row;
+    int col;			/* current insert-position */
+    int editcols[3];
+    int done = FALSE;
+    int was_visible = isVisible();
+    int lmargin = screen_col();
+    int nesting;		/* if we find left parenthesis rather than number */
+    char buffer[MAXBFR];	/* current input value */
 
-	static	char	old_digit = EOS; /* nonzero iff we have pending digit */
+    static char old_digit = EOS;	/* nonzero iff we have pending digit */
 
-	if (np->cmd == R_PAREN)
-		edit = FALSE;
+    if (np->cmd == R_PAREN)
+	edit = FALSE;
 
-	ShowStatus(np, FALSE);
-	row = ShowValue(np, editcols, FALSE) + 1;
+    ShowStatus(np, FALSE);
+    row = ShowValue(np, editcols, FALSE) + 1;
 
-	if (isVisible()) {
-		screen_set_position(row, editcols[0]);
-		screen_set_reverse(TRUE);
-	}
+    if (isVisible()) {
+	screen_set_position(row, editcols[0]);
+	screen_set_reverse(TRUE);
+    }
 
-	if (edit) {
-		if (np->psh) {
-			buffer[0] = L_PAREN;
-			buffer[1] = EOS;
-		} else {
-			register int len, dot;
-			register char *s;
-
-			(void) sprintf (buffer, "%0*.0f", len_frac, np->val);
-			len = strlen(buffer);
-			s = buffer + len;
-			s[1] = EOS;
-			for (c = 0; c < len_frac; c++, s--)
-				s[0] = s[-1];
-			dot = len - len_frac;
-			len++;
-			buffer[dot] = PERIOD;
-		}
-		if (isVisible()) {
-			screen_set_position(row, (int)(editcols[0] + val_width - strlen(buffer)));
-			screen_puts (buffer);
-		}
+    if (edit) {
+	if (np->psh) {
+	    buffer[0] = L_PAREN;
+	    buffer[1] = EOS;
 	} else {
-		buffer[0] = EOS;
+	    register int len, dot;
+	    register char *s;
+
+	    (void) sprintf(buffer, "%0*.0f", len_frac, np->val);
+	    len = strlen(buffer);
+	    s = buffer + len;
+	    s[1] = EOS;
+	    for (c = 0; c < len_frac; c++, s--)
+		s[0] = s[-1];
+	    dot = len - len_frac;
+	    len++;
+	    buffer[dot] = PERIOD;
+	}
+	if (isVisible()) {
+	    screen_set_position(row, (int) (editcols[0] + val_width - strlen(buffer)));
+	    screen_puts(buffer);
+	}
+    } else {
+	buffer[0] = EOS;
+    }
+
+    if (isVisible())
+	screen_set_position(row, editcols[0] + val_width);
+    col = strlen(buffer);
+    nesting = (*buffer == L_PAREN);
+    c = EOS;
+
+    while (!done) {
+	if (old_digit) {
+	    c = old_digit;
+	    old_digit = EOS;
+	} else {
+	    c = GetC();
 	}
 
-	if (isVisible())
-		screen_set_position(row, editcols[0] + val_width);
-	col = strlen(buffer);
-	nesting = (*buffer == L_PAREN);
-	c = EOS;
-
-	while (!done) {
-		if (old_digit) {
-			c = old_digit;
-			old_digit = EOS;
-		} else {
-			c = GetC();
-		}
-
-		/*
-		 * If the current operator is a right parenthesis, we must have
-		 * an operator following, with no data intervening:
-		 */
-		if (np->cmd == R_PAREN) {
-			if (isDigit(c)
-			 || (c == PERIOD)
-			 || (c == L_PAREN)) {
-				screen_alarm ();
-			} else {
-				*len_ = -2;
-				done  = TRUE;
-			}
-		}
-		/*
-		 * Move left/right within the buffer to adjust the insertion
-		 * position. In curses mode, CTL/F and CTL/B are conflicting.
-		 */
-		else if (is_left_char(c) && !is_up_page(c)) {
-			col = screen_move_left(col, 0);
-		} else if (is_right_char(c) && !is_down_page(c)) {
-			col = screen_move_right(col, (int)strlen(buffer));
-		} else if (is_home_char(c)) {
-			while (col > 0)
-				col = screen_move_left(col, 0);
-		} else if (is_end_char(c)) {
-			while (col < (int)strlen(buffer))
-				col = screen_move_right(col, (int)strlen(buffer));
-		}
-		/*
-		 * Backspace deletes the last character entered:
-		 */
-		else if (is_delete_left(c)) {
-			col = doDeleteChar(buffer, col, val_width);
-			if (*buffer == EOS)
-				nesting = FALSE;
-		}
-		/*
-		 * A left parenthesis may be used only as the first (and only)
-		 * character of the operand.
-		 */
-		else if (c == L_PAREN) {
-			if (*buffer != EOS) {
-				screen_alarm ();
-			} else {
-				col = InsertChar(buffer, c, col, lmargin, val_width, (int *)0);
-				nesting = TRUE;
-			}
-		}
-		/*
-		 * If we have received a left parenthesis, and do not delete
-		 * it, the next character begins a new operand-line:
-		 */
-		else if (nesting) {
-			if (UnaryConflict(np, c))
-				screen_alarm();
-			else {
-				if (isDigit(c) || c == PERIOD) {
-					old_digit = c;
-					c = OP_ADD;
-				}
-				*len_ = -1;
-				done  = TRUE;
-			}
-		}
-		/*
-		 * Otherwise, we assume we have a normal value which we are
-		 * decoding:
-		 */
-		else if (isDigit(c)) {
-			int	limit = val_width;
-			if (strchr(buffer, '.') == 0)
-				limit -= (1 + len_frac);
-			if (strlen(buffer) > limit)
-				screen_alarm();
-			else
-				col = InsertChar(buffer, c, col, lmargin, val_width, (int *)0);
-		}
-		/*
-		 * Decimal point can be entered once for each number. If we
-		 * get another, simply move it to the new position.
-		 */
-		else if (c == PERIOD) {
-			register int dot;
-			if ((dot = DecimalPoint(buffer)) >= 0)
-				col = DeleteChar(buffer, dot, col, val_width);
-			col = InsertChar(buffer, c, col, lmargin, val_width, (int *)0);
-		}
-		/*
-		 * Otherwise, we assume a new operator-character for the
-		 * next command, flushing out the current command.  Decode
-		 * the number (if any) which we have read:
-		 */
-		else if (c != COMMA) {
-			if (*buffer != EOS) {
-				register int len = strlen(buffer);
-				register int dot;
-				Value cents;
-
-				if ((dot = DecimalPoint(buffer)) < 0)
-					buffer[dot = len++] = PERIOD;
-				while ((len-dot) <= len_frac)
-					buffer[len++] = '0';
-				len = dot + 1 + len_frac; /* truncate */
-				buffer[len] = EOS;
-				(void) sscanf (&buffer[dot+1], "%lf", &cents);
-				if (dot) {
-					buffer[dot] = EOS;
-					(void) sscanf (buffer, "%lf", val_);
-					buffer[dot] = PERIOD;
-					*val_ *= val_frac;
-				} else
-					*val_ = 0.0;
-				*val_ += cents;
-			} else {
-				*val_ = np->val;
-			}
-			*len_ = (*buffer == L_PAREN) ? 0 : strlen(buffer);
-			done  = TRUE;
-		}
+	/*
+	 * If the current operator is a right parenthesis, we must have
+	 * an operator following, with no data intervening:
+	 */
+	if (np->cmd == R_PAREN) {
+	    if (isDigit(c)
+		|| (c == PERIOD)
+		|| (c == L_PAREN)) {
+		screen_alarm();
+	    } else {
+		*len_ = -2;
+		done = TRUE;
+	    }
 	}
-	if (was_visible)
-		screen_set_reverse(FALSE);
-	return (c);
+	/*
+	 * Move left/right within the buffer to adjust the insertion
+	 * position. In curses mode, CTL/F and CTL/B are conflicting.
+	 */
+	else if (is_left_char(c) && !is_up_page(c)) {
+	    col = screen_move_left(col, 0);
+	} else if (is_right_char(c) && !is_down_page(c)) {
+	    col = screen_move_right(col, (int) strlen(buffer));
+	} else if (is_home_char(c)) {
+	    while (col > 0)
+		col = screen_move_left(col, 0);
+	} else if (is_end_char(c)) {
+	    while (col < (int) strlen(buffer))
+		col = screen_move_right(col, (int) strlen(buffer));
+	}
+	/*
+	 * Backspace deletes the last character entered:
+	 */
+	else if (is_delete_left(c)) {
+	    col = doDeleteChar(buffer, col, val_width);
+	    if (*buffer == EOS)
+		nesting = FALSE;
+	}
+	/*
+	 * A left parenthesis may be used only as the first (and only)
+	 * character of the operand.
+	 */
+	else if (c == L_PAREN) {
+	    if (*buffer != EOS) {
+		screen_alarm();
+	    } else {
+		col = InsertChar(buffer, c, col, lmargin, val_width, (int *) 0);
+		nesting = TRUE;
+	    }
+	}
+	/*
+	 * If we have received a left parenthesis, and do not delete
+	 * it, the next character begins a new operand-line:
+	 */
+	else if (nesting) {
+	    if (UnaryConflict(np, c))
+		screen_alarm();
+	    else {
+		if (isDigit(c) || c == PERIOD) {
+		    old_digit = c;
+		    c = OP_ADD;
+		}
+		*len_ = -1;
+		done = TRUE;
+	    }
+	}
+	/*
+	 * Otherwise, we assume we have a normal value which we are
+	 * decoding:
+	 */
+	else if (isDigit(c)) {
+	    int limit = val_width;
+	    if (strchr(buffer, '.') == 0)
+		limit -= (1 + len_frac);
+	    if ((int) strlen(buffer) > limit)
+		screen_alarm();
+	    else
+		col = InsertChar(buffer, c, col, lmargin, val_width, (int *) 0);
+	}
+	/*
+	 * Decimal point can be entered once for each number. If we
+	 * get another, simply move it to the new position.
+	 */
+	else if (c == PERIOD) {
+	    register int dot;
+	    if ((dot = DecimalPoint(buffer)) >= 0)
+		col = DeleteChar(buffer, dot, col, val_width);
+	    col = InsertChar(buffer, c, col, lmargin, val_width, (int *) 0);
+	}
+	/*
+	 * Otherwise, we assume a new operator-character for the
+	 * next command, flushing out the current command.  Decode
+	 * the number (if any) which we have read:
+	 */
+	else if (c != COMMA) {
+	    if (*buffer != EOS) {
+		register int len = strlen(buffer);
+		register int dot;
+		Value cents;
+
+		if ((dot = DecimalPoint(buffer)) < 0)
+		    buffer[dot = len++] = PERIOD;
+		while ((len - dot) <= len_frac)
+		    buffer[len++] = '0';
+		len = dot + 1 + len_frac;	/* truncate */
+		buffer[len] = EOS;
+		(void) sscanf(&buffer[dot + 1], "%lf", &cents);
+		if (dot) {
+		    buffer[dot] = EOS;
+		    (void) sscanf(buffer, "%lf", val_);
+		    buffer[dot] = PERIOD;
+		    *val_ *= val_frac;
+		} else
+		    *val_ = 0.0;
+		*val_ += cents;
+	    } else {
+		*val_ = np->val;
+	    }
+	    *len_ = (*buffer == L_PAREN) ? 0 : strlen(buffer);
+	    done = TRUE;
+	}
+    }
+    if (was_visible)
+	screen_set_reverse(FALSE);
+    return (c);
 }
 
 /*
  * Return true if (given the length returned by 'EditValue()', and the
  * state of the data-list) we don't display a value.
  */
-static
-int	NoValue (int len)
+static int
+NoValue(int len)
 {
-	return ((len == 0 || len == -2) && (all_data->next->next != 0));
+    return ((len == 0 || len == -2) && (all_data->next->next != 0));
 }
 
 /*
  * Compute one stage of the running total.  To support parentheses, we use two
  * arguments: 'old' is the operand which contains the left parenthesis.
  */
-static
-int	Calculate (DATA *np, DATA *old)
+static int
+Calculate(DATA * np, DATA * old)
 {
-	Bool same;
-	Value before = np->sum;
+    Bool same;
+    Value before = np->sum;
 
-	np->sum = (old->prev) ? old->prev->sum : 0.0;
-	switch (old->cmd) {
-	default:
-	case OP_ADD:
-		np->sum += np->val;
-		break;
-	case OP_SUB:
-		np->sum -= np->val;
-		break;
-	case OP_MUL:
-		np->sum *= (np->val / val_frac);
-		np->sum = Floor(np->sum);
-		break;
-	case OP_DIV:
-		if (np->val == 0.0) {
-			if (np->sum > 0.0)	np->sum = big_long;
-			else if (np->sum < 0.0)	np->sum = -big_long;
-		} else {
-			np->sum /= (np->val / val_frac);
-			np->sum = Floor(np->sum);
-		}
-		break;
-	case OP_INT:
-		np->aux = Ceiling(np->sum * np->val / (interval * 100. * val_frac));
-		np->sum += np->aux;
-		break;
-	case OP_TAX:
-		np->aux = Ceiling(np->sum * np->val / (100. * val_frac));
-		np->sum += np->aux;
-		break;
+    np->sum = (old->prev) ? old->prev->sum : 0.0;
+    switch (old->cmd) {
+    default:
+    case OP_ADD:
+	np->sum += np->val;
+	break;
+    case OP_SUB:
+	np->sum -= np->val;
+	break;
+    case OP_NEG:
+	np->sum = -np->sum;
+	break;
+    case OP_MUL:
+	np->sum *= (np->val / val_frac);
+	np->sum = Floor(np->sum);
+	break;
+    case OP_DIV:
+	if (np->val == 0.0) {
+	    if (np->sum > 0.0)
+		np->sum = big_long;
+	    else if (np->sum < 0.0)
+		np->sum = -big_long;
+	} else {
+	    np->sum /= (np->val / val_frac);
+	    np->sum = Floor(np->sum);
 	}
+	break;
+    case OP_INT:
+	np->aux = Ceiling(np->sum * np->val / (interval * 100. * val_frac));
+	np->sum += np->aux;
+	break;
+    case OP_TAX:
+	np->aux = Ceiling(np->sum * np->val / (100. * val_frac));
+	np->sum += np->aux;
+	break;
+    }
 
-	same = (before == np->sum)
-		&& (before < big_long)
-		&& (before > -big_long);
+    same = (before == np->sum)
+	&& (before < big_long)
+	&& (before > -big_long);
 
-	if (isVisible() && !same)
-		scriptCHG = TRUE;
-	return (same);
+    if (isVisible() && !same)
+	scriptCHG = TRUE;
+    return (same);
 }
 
 /*
@@ -1370,38 +1404,38 @@ int	Calculate (DATA *np, DATA *old)
  * 'val' components, propagate the computation to the end of the vector,
  * showing the result on the screen.
  */
-static
-void	Recompute (DATA *base)
+static void
+Recompute(DATA * base)
 {
-	register DATA *np = base;
-	register DATA *op;
-	int	level = LevelOf(np);
-	Bool	same;
+    register DATA *np = base;
+    register DATA *op;
+    int level = LevelOf(np);
+    Bool same;
 
-	while (np != 0) {
-		if (np->psh) {
-			np->sum = 0.0;
-			level++;
-		} else {
-			if (np->cmd == R_PAREN) {
-				level--;
-				np->val = np->prev->sum;
-				op = Balance(np, level);
-				if (op == 0) {
-					op = all_data;
-					level = 0;
-				}
-			} else {
-				op = np;
-			}
-			same = Calculate(np, op);
-			if ((level == 0) && same)
-				break;
+    while (np != 0) {
+	if (np->psh) {
+	    np->sum = 0.0;
+	    level++;
+	} else {
+	    if (np->cmd == R_PAREN) {
+		level--;
+		np->val = np->prev->sum;
+		op = Balance(np, level);
+		if (op == 0) {
+		    op = all_data;
+		    level = 0;
 		}
-		np = np->next;
+	    } else {
+		op = np;
+	    }
+	    same = Calculate(np, op);
+	    if ((level == 0) && same)
+		break;
 	}
+	np = np->next;
+    }
 
-	ShowRange(base, np ? np->next : np);
+    ShowRange(base, np ? np->next : np);
 }
 
 /*
@@ -1409,125 +1443,134 @@ void	Recompute (DATA *base)
  * after the current 'base'.  This is the normal mode of operation, and is
  * consistent with 'x'-command.
  */
-static
-DATA *	OpenLine (DATA *base, int after, int *repeated, int *edit)
+static DATA *
+OpenLine(DATA * base, int after, int *repeated, int *edit)
 {
-	DATA	*save_top = top_data;
-	DATA	*op = after ? base : base->prev;
-	DATA	*np;
-	int	chr,
-		this_row,
-		done = FALSE,
-		nested;
+    DATA *save_top = top_data;
+    DATA *op = after ? base : base->prev;
+    DATA *np;
+    int chr;
+    int this_row;
+    int done = FALSE;
+    int nested;
 
-	np = AllocData(op);
-	nested   = LevelOf(np);
-	this_row = CountFromTop(np);
+    np = AllocData(op);
+    nested = LevelOf(np);
+    this_row = CountFromTop(np);
 
-	/* Adjust 'top_data' if we have to scroll a little */
-	if (this_row <= 1) {
-		while (this_row++ <= 1) {
-			if (top_data->prev == all_data)
-				break;
-			top_data = top_data->prev;
-		}
-	} else {
-		this_row -= (screen_full - 2);
-		while (this_row-- > 0)
-			top_data = top_data->next;
+    /* Adjust 'top_data' if we have to scroll a little */
+    if (this_row <= 1) {
+	while (this_row++ <= 1) {
+	    if (top_data->prev == all_data)
+		break;
+	    top_data = top_data->prev;
 	}
+    } else {
+	this_row -= (screen_full - 2);
+	while (this_row-- > 0)
+	    top_data = top_data->next;
+    }
 
-	/* (Re)display the screen with the opened line */
-	if (top_data == save_top)
-		ShowFrom(np->next);
-	else
+    /* (Re)display the screen with the opened line */
+    if (top_data == save_top)
+	ShowFrom(np->next);
+    else
+	ShowFrom(top_data);
+    ShowStatus(np, TRUE + nested);
+    screen_clear_endline();
+    *edit = FALSE;		/* assume we'll get some new data */
+
+    while (!done) {
+	chr = GetC();
+	if (UnaryConflict(np, chr)) {
+	    screen_alarm();
+	    continue;
+	}
+	switch (chr) {
+	case OP_INT:		/* sC: open to interest */
+	case OP_TAX:		/* sC: open to sales tax */
+	    /* patch: provide defaults */
+	case OP_ADD:		/* sC: open to add */
+	case OP_SUB:		/* sC: open to subtract */
+	case OP_NEG:		/* sC: open to negate */
+	case R_PAREN:		/* sC: open closing brace */
+	    setval(np, chr, 0.0, FALSE);
+	    done++;
+	    break;
+	case L_PAREN:
+	    setval(np, OP_ADD, 0.0, TRUE);
+	    *edit = TRUE;	/* force this to display */
+	    done++;
+	    break;
+	case OP_MUL:		/* sC: open to multiply */
+	case OP_DIV:		/* sC: open to divide */
+	    setval(np, chr, val_frac, FALSE);
+	    done++;
+	    break;
+	case 'a':
+	case 's':
+	case 'n':
+	case 'm':
+	case 'd':
+	case 'i':
+	case 't':
+	    chr = isRepeats(chr);
+	    setval(np, chr, LastVAL(np, chr), FALSE);
+	    done++;
+	    *repeated = TRUE;
+	    break;
+	case 'q':
+	case 'Q':
+	case 'o':
+	case 'O':
+	case 'x':
+	case 'X':
+	case 'u':
+	case 'U':
+	    (void) FreeData(np, FALSE);
+	    if (top_data != save_top) {
+		top_data = save_top;
 		ShowFrom(top_data);
-	ShowStatus(np, TRUE + nested);
-	screen_clear_endline();
-	*edit = FALSE;	/* assume we'll get some new data */
-
-	while (!done) {
-		chr = GetC();
-		if (UnaryConflict(np, chr)) {
-			screen_alarm();
-			continue;
-		}
-		switch (chr) {
-		case OP_INT:			/* sC: open to interest */
-		case OP_TAX:			/* sC: open to sales tax */
-						/* patch: provide defaults */
-		case OP_ADD:			/* sC: open to add */
-		case OP_SUB:			/* sC: open to subtract */
-		case R_PAREN:			/* sC: open closing brace */
-			setval (np, chr, 0.0, FALSE);
-			done++;
-			break;
-		case L_PAREN:
-			setval (np, OP_ADD, 0.0, TRUE);
-			*edit = TRUE;		/* force this to display */
-			done++;
-			break;
-		case OP_MUL:			/* sC: open to multiply */
-		case OP_DIV:			/* sC: open to divide */
-			setval (np, chr, val_frac, FALSE);
-			done++;
-			break;
-		case 'a': case 's':
-		case 'm': case 'd':
-		case 'i': case 't':
-			chr = isRepeats(chr);
-			setval (np, chr, LastVAL(np,chr), FALSE);
-			done++;
-			*repeated = TRUE;
-			break;
-		case 'q': case 'Q':
-		case 'o': case 'O':
-		case 'x': case 'X':
-		case 'u': case 'U':
-			(void) FreeData(np, FALSE);
-			if (top_data != save_top) {
-				top_data = save_top;
-				ShowFrom(top_data);
-			}
-			np = base;
-			done++;
-			*edit = TRUE;	/* go back to the original */
-			break;
-		default:
-			screen_alarm();
-		}
+	    }
+	    np = base;
+	    done++;
+	    *edit = TRUE;	/* go back to the original */
+	    break;
+	default:
+	    screen_alarm();
 	}
-	return (np);
+    }
+    return (np);
 }
 
 /*
  * Perform half/full-screen scrolling:
  */
-static
-DATA *	ScrollBy (DATA *np, int amount)
+static DATA *
+ScrollBy(DATA * np, int amount)
 {
-	int	last_seq = CountAllData();
-	int	this_seq = CountData(np);
-	int	next_seq = this_seq;
-	int	top = CountData(top_data);
+    int last_seq = CountAllData();
+    int this_seq = CountData(np);
+    int next_seq = this_seq;
+    int top = CountData(top_data);
 
-	if (amount > 0) {
-		if ((top + amount) < last_seq) {
-			top += amount;
-			next_seq = top;
-		} else
-			next_seq = last_seq;
-	} else {
-		if (this_seq > top)
-			next_seq = top;
-		else {
-			next_seq = top+amount;
-			next_seq = max(next_seq, 1);
-			top = next_seq;
-		}
+    if (amount > 0) {
+	if ((top + amount) < last_seq) {
+	    top += amount;
+	    next_seq = top;
+	} else
+	    next_seq = last_seq;
+    } else {
+	if (this_seq > top)
+	    next_seq = top;
+	else {
+	    next_seq = top + amount;
+	    next_seq = max(next_seq, 1);
+	    top = next_seq;
 	}
-	ShowFrom(top_data = FindData(top));
-	return FindData(next_seq);
+    }
+    ShowFrom(top_data = FindData(top));
+    return FindData(next_seq);
 }
 
 /*
@@ -1535,135 +1578,140 @@ DATA *	ScrollBy (DATA *np, int amount)
  * compensates for other adjustments to the current data pointer in the calling
  * functions.
  */
-static
-DATA *	JumpBy (DATA *np, int amount)
+static DATA *
+JumpBy(DATA * np, int amount)
 {
-	int	this_seq = CountData(np);
-	int	next_seq = this_seq + amount,
-		last_seq = CountAllData();
-	Bool	end_flag = TRUE,
-		un_moved = FALSE;
+    int this_seq = CountData(np);
+    int next_seq = this_seq + amount;
+    int last_seq = CountAllData();
+    Bool end_flag = TRUE;
+    Bool un_moved = FALSE;
 
-	if (next_seq < 1) {
-		next_seq = 1;
-	} else if (next_seq > last_seq) {
-		next_seq = last_seq;
-	} else {
-		end_flag = FALSE;
-	}
+    if (next_seq < 1) {
+	next_seq = 1;
+    } else if (next_seq > last_seq) {
+	next_seq = last_seq;
+    } else {
+	end_flag = FALSE;
+    }
 
-	if (next_seq != this_seq) {
-		np = FindData(next_seq);
-	} else if (end_flag) {
-		un_moved = TRUE;
-	}
+    if (next_seq != this_seq) {
+	np = FindData(next_seq);
+    } else if (end_flag) {
+	un_moved = TRUE;
+    }
 
-	/* Figure out if we have to adjust the top_data variable.
-	 * If so, we've got to redisplay the screen.
-	 */
-	if (!un_moved) {
-		int	top = CountData(top_data);
-		Bool	adjust = TRUE;
-		if (next_seq < top)
-			top_data = np;
-		else if (next_seq >= top+screen_full)
-			top_data = FindData(next_seq - screen_full + 1);
-		else
-			adjust = FALSE;
-		if (adjust)
-			ShowFrom(top_data);
-	}
-	return np;
+    /* Figure out if we have to adjust the top_data variable.
+     * If so, we've got to redisplay the screen.
+     */
+    if (!un_moved) {
+	int top = CountData(top_data);
+	Bool adjust = TRUE;
+	if (next_seq < top)
+	    top_data = np;
+	else if (next_seq >= top + screen_full)
+	    top_data = FindData(next_seq - screen_full + 1);
+	else
+	    adjust = FALSE;
+	if (adjust)
+	    ShowFrom(top_data);
+    }
+    return np;
 }
 
 /*
  * Jump to a specified entry, by number
  */
-static
-DATA *	JumpTo (DATA *np, int seq)
+static DATA *
+JumpTo(DATA * np, int seq)
 {
-	return JumpBy(np, seq-CountData(np));
+    return JumpBy(np, seq - CountData(np));
 }
 
 /*
  * Prompt/process a :-command
  */
-static
-DATA *	ColonCommand (DATA *np)
+static DATA *
+ColonCommand(DATA * np)
 {
-	DATA	*save_top = top_data;
-	DATA	*prior_np = np;
-	char	buffer[BUFSIZ];
-	char	*reply;
-	static	char	*last_write = "";
+    DATA *save_top = top_data;
+    DATA *prior_np = np;
+    char buffer[BUFSIZ];
+    char *reply;
+    static char *last_write = "";
 
-	if (CountFromTop(np) >= screen_full-1) {
-		top_data = top_data->next;
-		ShowFrom(top_data);
-	}
-	ShowStatus(np, FALSE);		/* in case we have multiple prompts */
+    if (CountFromTop(np) >= screen_full - 1) {
+	top_data = top_data->next;
+	ShowFrom(top_data);
+    }
+    ShowStatus(np, FALSE);	/* in case we have multiple prompts */
 
-	screen_set_position(screen_full,0);
-	screen_putc(COLON);
-	screen_putc(' ');
-	*buffer = EOS;
-	EditBuffer(buffer, sizeof(buffer));
-	TrimString(buffer);
-	reply = buffer;
-	while (isspace(*reply))
-		reply++;
+    screen_set_position(screen_full, 0);
+    screen_putc(COLON);
+    screen_putc(' ');
+    *buffer = EOS;
+    EditBuffer(buffer, sizeof(buffer));
+    TrimString(buffer);
+    reply = buffer;
+    while (isspace(*reply))
+	reply++;
 
-	if (*reply != EOS) {
-		if (isdigit(*reply)) {
-			char *dst;
-			int seq = (int)strtol(reply, &dst, 0);
-			np = JumpTo(np, seq);
-		} else {
-			char *param = reply+1;
-			while (isspace(*param))
-				param++;
-			switch (*reply) {
-			case '$': /* FALLTHRU */
-			case '%':
-				np = JumpTo(np, CountAllData());
-				break;
-			case 'e':
-				np = all_data->next;
-				while (np->next != 0)
-					np = FreeData(np, TRUE);
-				save_top = top_data;
-				setval(np, OP_ADD, 0.0, FALSE);
-				Recompute(np);
-				/* FALLTHRU */
-			case 'r':
-				if (Ok2Read(param))
-					PushScripts(param);
-				break;
-			case 'w':
-				if (*param == EOS)
-					param = last_write;
-				if (*param == EOS)
-					param = top_output;
-				if (Ok2Write(param)) {
-					last_write = AllocString(param);
-					PutScript(param);
-				}
-				break;
-			case 'x':
-				show_scripts = TRUE;
-				break;
-			default:
-				screen_alarm();
-			}
+    if (*reply != EOS) {
+	if (isdigit(*reply)) {
+	    char *dst;
+	    int seq = (int) strtol(reply, &dst, 0);
+	    np = JumpTo(np, seq);
+	} else {
+	    char *param = reply + 1;
+	    while (isspace(*param))
+		param++;
+	    switch (*reply) {
+	    case '$':		/* FALLTHRU */
+	    case '%':
+		np = JumpTo(np, CountAllData());
+		break;
+	    case 'e':
+		np = all_data->next;
+		while (np->next != 0)
+		    np = FreeData(np, TRUE);
+		save_top = top_data;
+		setval(np, OP_ADD, 0.0, FALSE);
+		Recompute(np);
+		if (Ok2Read(param))
+		    PushScripts(param);
+		break;
+	    case 'f':
+		ShowScriptName();
+		break;
+	    case 'r':
+		if (Ok2Read(param))
+		    PushScripts(param);
+		break;
+	    case 'w':
+		if (*param == EOS)
+		    param = last_write;
+		if (*param == EOS)
+		    param = top_output;
+		if (Ok2Write(param)) {
+		    last_write = AllocString(param);
+		    PutScript(param);
 		}
+		break;
+	    case 'x':
+		show_scripts = TRUE;
+		break;
+	    default:
+		screen_alarm();
+	    }
 	}
+    }
 
-	if (top_data != save_top
-	 && prior_np == np) {
-		top_data = save_top;
-		ShowFrom(top_data);
-	}
-	return np;
+    if (top_data != save_top
+	&& prior_np == np) {
+	top_data = save_top;
+	ShowFrom(top_data);
+    }
+    return np;
 }
 
 /*
@@ -1671,68 +1719,68 @@ DATA *	ColonCommand (DATA *np)
  * printing characters, so (if in edit-mode) we may have already intercepted
  * these as text.
  */
-static
-int	ScreenMovement (DATA **pp, int chr)
+static int
+ScreenMovement(DATA ** pp, int chr)
 {
-	DATA	*np = *pp;
-	int	ok = TRUE;
+    DATA *np = *pp;
+    int ok = TRUE;
 
-	if (chr == COLON) {
-		np = ColonCommand(np);
-	} else if (chr == 'z') {
-		chr = GetC();
-		if (isReturn(chr)) {
-			top_data = np;
-		} else {
-			int	top = CountData(top_data);
-			int	seq = CountData(np);
-			if (chr == '-') { /* use current entry as end */
-				top = seq - screen_full + 1;
-			} else {
-				top = seq - screen_half + 1;
-			}
-			top = max(top, 1);
-			top_data = FindData(top);
-		}
-		ShowFrom(top_data);
+    if (chr == COLON) {
+	np = ColonCommand(np);
+    } else if (chr == 'z') {
+	chr = GetC();
+	if (isReturn(chr)) {
+	    top_data = np;
+	} else {
+	    int top = CountData(top_data);
+	    int seq = CountData(np);
+	    if (chr == '-') {	/* use current entry as end */
+		top = seq - screen_full + 1;
+	    } else {
+		top = seq - screen_half + 1;
+	    }
+	    top = max(top, 1);
+	    top_data = FindData(top);
+	}
+	ShowFrom(top_data);
 #ifdef KEY_HOME
-	} else if (chr == KEY_HOME) {	/* C: move to first entry in list */
-		np = all_data->next;
-		ShowFrom(top_data = np);
+    } else if (chr == KEY_HOME) {	/* C: move to first entry in list */
+	np = all_data->next;
+	ShowFrom(top_data = np);
 #endif
 #ifdef KEY_END
-	} else if (chr == KEY_END) {	/* C: move to last entry in list */
-		int	top, seq;
+    } else if (chr == KEY_END) {	/* C: move to last entry in list */
+	int top, seq;
 
-		np = EndOfData();
-		seq = CountData(np);
-		top = seq - screen_full + 1;
-		top = max(top, 1);
-		top_data = FindData(top);
-		ShowFrom(top_data);
+	np = EndOfData();
+	seq = CountData(np);
+	top = seq - screen_full + 1;
+	top = max(top, 1);
+	top_data = FindData(top);
+	ShowFrom(top_data);
 #endif
-	} else if (chr == 'H') {	/* C: move to first entry on screen */
-		np = top_data;
-	} else if (chr == 'L') {	/* C: move to last entry on screen */
-		np = ScreenBottom();
-	} else if (is_down_char(chr)) {	/* C: move down 1 line */
-		np = JumpBy(np, 1);
-	} else if (is_up_char(chr)) {	/* C: move up 1 line */
-		np = JumpBy(np, -1);
-	} else if (chr == CTL('D')) {	/* C: scroll forward 1/2 screen */
-		np = ScrollBy(np, screen_half);
-	} else if (chr == CTL('U')) {	/* C: scroll backward 1/2 screen */
-		np = ScrollBy(np, -screen_half);
-	} else if (is_down_page(chr)) {	/* C: scroll forward one screen */
-		np = ScrollBy(np, screen_full);
-	} else if (is_up_page(chr)) {	/* C: scroll backward one screen */
-		np = ScrollBy(np, -screen_full);
-	} else {
-		ok = FALSE;
-	}
+    } else if (chr == 'H') {	/* C: move to first entry on screen */
+	np = top_data;
+    } else if (chr == 'L') {	/* C: move to last entry on screen */
+	np = ScreenBottom();
+    } else if (is_down_char(chr)) {	/* C: move down 1 line */
+	np = JumpBy(np, 1);
+    } else if (is_up_char(chr)) {	/* C: move up 1 line */
+	np = JumpBy(np, -1);
+    } else if (chr == CTL('D')) {	/* C: scroll forward 1/2 screen */
+	np = ScrollBy(np, screen_half);
+    } else if (chr == CTL('U')) {	/* C: scroll backward 1/2 screen */
+	np = ScrollBy(np, -screen_half);
+    } else if (is_down_page(chr)) {	/* C: scroll forward one screen */
+	np = ScrollBy(np, screen_full);
+    } else if (is_up_page(chr)) {	/* C: scroll backward one screen */
+	np = ScrollBy(np, -screen_full);
+    } else {
+	ok = FALSE;
+    }
 
-	*pp = np;
-	return ok;
+    *pp = np;
+    return ok;
 }
 
 /*
@@ -1740,89 +1788,91 @@ int	ScreenMovement (DATA **pp, int chr)
  * We store the help-text as a special case of the data list to permit use
  * of the scrolling code.
  */
-static
-void	ShowHelp(void)
+static void
+ShowHelp(void)
 {
-	FILE	*fp;
-	DATA	*save_data = all_data;
-	DATA	*save_top  = top_data;
-	DATA	*np;
-	int	chr,
-		end;
-	int	done = FALSE;
-	char	buffer[BUFSIZ];
+    FILE *fp;
+    DATA *save_data = all_data;
+    DATA *save_top = top_data;
+    DATA *np;
+    int chr;
+    int end;
+    int done = FALSE;
+    char buffer[BUFSIZ];
 
-	if ((all_data = all_help) == 0) {
+    if ((all_data = all_help) == 0) {
 
-		np = AllocData((DATA *)0);	/* header line not shown */
-		if ((fp = fopen(helpfile, "r")) != 0) {
-			while (fgets(buffer, sizeof(buffer), fp) != 0) {
-				np = AllocData(np);
-				np->txt = AllocString(buffer);
-			}
-			(void) fclose(fp);
-		} else {
-			np = AllocData(np);
-			np->txt = "Could not find help-file.  Press 'q' to exit.";
-		}
+	np = AllocData((DATA *) 0);	/* header line not shown */
+	if ((fp = fopen(helpfile, "r")) != 0) {
+	    while (fgets(buffer, sizeof(buffer), fp) != 0) {
+		np = AllocData(np);
+		np->txt = AllocString(buffer);
+	    }
+	    (void) fclose(fp);
+	} else {
+	    np = AllocData(np);
+	    np->txt = "Could not find help-file.  Press 'q' to exit.";
 	}
+    }
 
-	np = top_data = all_data->next;
-	end = CountAllData();
-	ShowFrom(all_data);
+    np = top_data = all_data->next;
+    end = CountAllData();
+    ShowFrom(all_data);
 
-	while (!done) {
-		screen_set_position(0, 0);
-		screen_set_bold(TRUE);
-		screen_clear_endline();
-		(void) sprintf(buffer, "line %d of %d", CountData(np), end);
-		screen_set_position (0, screen_cols_left((int)strlen(buffer)));
-		screen_puts(buffer);
-		screen_set_position (0, 0);
-		screen_printf("ADD v%d_%d -- %s -- ", RELEASE, PATCHLEVEL, copyrite);
-		screen_set_bold(FALSE);
-		screen_set_position(CountFromTop(np)+1, 0);
-		chr = GetC();
-		if (chr == 'q' || chr == 'Q') {
-			done = TRUE;
-		} else if (!ScreenMovement(&np, chr)) {
-			screen_alarm();
-		}
+    while (!done) {
+	screen_set_position(0, 0);
+	screen_set_bold(TRUE);
+	screen_clear_endline();
+	(void) sprintf(buffer, "line %d of %d", CountData(np), end);
+	screen_set_position(0, screen_cols_left((int) strlen(buffer)));
+	screen_puts(buffer);
+	screen_set_position(0, 0);
+	screen_printf("ADD %s -- %s -- ", RELEASE, copyrite);
+	screen_set_bold(FALSE);
+	screen_set_position(CountFromTop(np) + 1, 0);
+	chr = GetC();
+	if (chr == 'q' || chr == 'Q') {
+	    done = TRUE;
+	} else if (!ScreenMovement(&np, chr)) {
+	    screen_alarm();
 	}
+    }
 
-	all_help = all_data;
-	all_data = save_data;
-	top_data = save_top;
-	ShowFrom(top_data);
+    all_help = all_data;
+    all_data = save_data;
+    top_data = save_top;
+    ShowFrom(top_data);
 }
 
 #ifndef VMS
+
 # ifdef	unix
 #  define isSlash(c) ((c) == '/')
 # else
 #  define isSlash(c) ((c) == '/' || (c) == '\\')
 # endif
-static
-int	AbsolutePath (char *path)
+
+static int
+AbsolutePath(char *path)
 {
-#if	!defined(unix) && !defined(vms)	/* assume MSDOS */
-	if (isalpha(*path) && path[1] == ':')
-		path += 2;
+#if	!defined(unix) && !defined(vms)		/* assume MSDOS */
+    if (isalpha(*path) && path[1] == ':')
+	path += 2;
 #endif
-	return isSlash(*path)
-	   ||  ((*path++ == '.')
-	     && (isSlash(*path)
-	      || (*path++ == '.' && isSlash(*path))));
+    return isSlash(*path)
+	|| ((*path++ == '.')
+	    && (isSlash(*path)
+		|| (*path++ == '.' && isSlash(*path))));
 }
 
-static
-char *	PathLeaf (char *path)
+static char *
+PathLeaf(char *path)
 {
-	register int n;
-	for (n = strlen(path); n > 0; n--)
-		if (isSlash(path[n-1]))
-			break;
-	return path + n;
+    register int n;
+    for (n = strlen(path); n > 0; n--)
+	if (isSlash(path[n - 1]))
+	    break;
+    return path + n;
 }
 #endif
 
@@ -1831,326 +1881,343 @@ char *	PathLeaf (char *path)
  * directory as that in which this program is stored, located by searching the
  * PATH environment variable.
  */
-static
-void	FindHelp (char *program)
+static void
+FindHelp(char *program)
 {
 #ifdef ADD_HELPFILE
-	helpfile = ADD_HELPFILE;
+    helpfile = ADD_HELPFILE;
 #else
-	char	temp[BUFSIZ];
-	register char *s = strcpy(temp, program);
+    char temp[BUFSIZ];
+    register char *s = strcpy(temp, program);
 # if SYS_VMS
-	for (s += strlen(temp); s != temp; s--)
-		if (s[-1] == ']' || s[-1] == ':')
-			break;
-# else	/* assume UNIX or MSDOS */
-	if (AbsolutePath(temp)) {
-		s = PathLeaf(temp);
-	} else {
-		char	*path = getenv("PATH");
-		int	j = 0, k, l;
-		if (path == 0)
-			path = "";
-		while (path[j] != EOS) {
-			for (k = j; path[k] != EOS && path[k] != PATHSEP; k++)
-				temp[k-j] = path[k];
-			if ((l = k - j) != 0)
-				temp[l++] = '/';
-			s = strcpy(temp+l, program);
-			if (access(temp, 5) == 0) {
-				temp[l] = EOS;
-				break;
-			}
-			j = (path[k] != EOS) ? k+1 : k;
-		}
-		if (path[j] == EOS) {
-			s = temp;
-			*s++ = '.';
-			*s++ = '/';
-			s = PathLeaf(strcpy(s, program));
-		}
+    for (s += strlen(temp); s != temp; s--)
+	if (s[-1] == ']' || s[-1] == ':')
+	    break;
+# else				/* assume UNIX or MSDOS */
+    if (AbsolutePath(temp)) {
+	s = PathLeaf(temp);
+    } else {
+	char *path = getenv("PATH");
+	int j = 0, k, l;
+	if (path == 0)
+	    path = "";
+	while (path[j] != EOS) {
+	    for (k = j; path[k] != EOS && path[k] != PATHSEP; k++)
+		temp[k - j] = path[k];
+	    if ((l = k - j) != 0)
+		temp[l++] = '/';
+	    s = strcpy(temp + l, program);
+	    if (access(temp, 5) == 0) {
+		temp[l] = EOS;
+		break;
+	    }
+	    j = (path[k] != EOS) ? k + 1 : k;
 	}
-# endif	/* VMS/UNIX/MSDOS */
-	(void) strcpy(s, "add.hlp");
-	helpfile = AllocString(temp);
-#endif	/* ADD_HELPFILE */
+	if (path[j] == EOS) {
+	    s = temp;
+	    *s++ = '.';
+	    *s++ = '/';
+	    s = PathLeaf(strcpy(s, program));
+	}
+    }
+# endif				/* VMS/UNIX/MSDOS */
+    (void) strcpy(s, "add.hlp");
+    helpfile = AllocString(temp);
+#endif /* ADD_HELPFILE */
 }
 
 /*
  * Main program loop: given 'old' operator (applies to current entry), read the
  * value 'val', delimited by the next operator 'chr'.
  */
-static
-int	Loop(void)
+static int
+Loop(void)
 {
-	DATA *np = EndOfData();
-	Value	val;
-	int	test_c,
-		chr,
-		len,
-		opened,
-		repeated,	/* if true, 'Loop' assumes editable value */
-		edit	= FALSE;
+    DATA *np = EndOfData();
+    Value val;
+    int test_c;
+    int chr;
+    int len;
+    int opened;
+    int repeated;		/* if true, 'Loop' assumes editable value */
+    int edit = FALSE;
 
-	for (;;) {
-		chr = EditValue(np, &len, &val, edit);
-		switch (chr) {
-		case '\t':	chr = EQUALS;	break;
-		case '\r':
-		case '\n':	chr = 'j';	break;
-		case ' ':	chr = DefaultOp(np);
-		}
-
-		if (chr == 'X') { /* C: delete current entry, move up */
-			if (NoValue(len)) {
-				np = FreeData(np, TRUE);
-				np = JumpBy(np, -1);
-				edit = HasData(np);
-			} else {
-				edit = FALSE;
-			}
-		} else if (chr == 'x') { /* C: delete current entry, move down */
-			if (NoValue(len)) {
-				np = FreeData(np, TRUE);
-				edit = HasData(np);
-			} else {
-				edit = FALSE;
-			}
-		} else if (chr == 'u') { /* C: undo last 'x' command */
-			if (HasData(np))
-				edit = TRUE;
-			else
-				screen_alarm();
-		} else if ((test_c = isToggles(chr)) != EOS) {
-			/* C: toggle current operator */
-			chr = test_c;
-			if (UnaryConflict(np, chr)) {
-				screen_alarm ();
-			} else {
-				if (len == 0)
-					val = np->val;
-				else
-					edit = TRUE;
-				setval (np, chr, val, np->psh);
-			}
-		} else {
-			if (len != 0) {
-				setval (np, np->cmd, val, (len == -1));
-				if (LastData(np) && isCommand(chr)) {
-					(void)AllocData(np);
-					np->next->cmd = chr;
-				} else if (LastData(np) && isRepeats(chr)) {
-					(void)AllocData(np);
-					np->next->cmd = isRepeats(chr);
-				}
-				Recompute (np);
-			} else {
-				(void)ShowValue(np, (int *)0, FALSE);
-			}
-
-			repeated = FALSE;
-			opened = FALSE;
-
-			if (chr == '?') {		/* C: display help file */
-				ShowHelp();
-			} else if (chr == '#') {	/* C: edit comment */
-				EditComment(np);
-			} else if (chr == 'Q') {	/* C: quit w/o changes */
-				return (FALSE);
-			} else if (chr == 'q') {	/* C: quit */
-				return (TRUE);
-			} else if (ScreenMovement(&np, chr)) {
-				;
-			} else if (chr == 'O'		/* C: open before */
-			   ||      chr == 'o') {	/* C: open after */
-				opened = TRUE;
-				np = OpenLine(np, (chr == 'o'),
-					&repeated, &edit);
-				if (repeated)
-					chr = np->cmd;
-			} else {
-				if ((test_c = isRepeats(chr)) != EOS) {
-					chr = test_c;
-					repeated = TRUE;
-				}
-				if (isCommand(chr)) {
-					np = JumpBy(np, 1);
-					np->cmd = chr;
-				} else if (chr == EQUALS) {
-					Recompute(np);
-				} else {
-					screen_alarm();
-				}
-			}
-			if (repeated) {
-				edit = TRUE;
-				setval (np, chr, LastVAL(np,chr), FALSE);
-			} else if (!opened) {
-				edit = HasData(np);
-			}
-		}
+    for (;;) {
+	chr = EditValue(np, &len, &val, edit);
+	switch (chr) {
+	case '\t':
+	    chr = EQUALS;
+	    break;
+	case CTL('P'):
+	    chr = 'k';
+	    break;
+	case CTL('N'):
+	case '\r':
+	case '\n':
+	    chr = 'j';
+	    break;
+	case ' ':
+	    chr = DefaultOp(np);
+	    break;
 	}
+
+	if (chr == CTL('G')) {
+	    ShowScriptName();
+	} else if (chr == 'X') {	/* C: delete current entry, move up */
+	    if (NoValue(len)) {
+		np = FreeData(np, TRUE);
+		np = JumpBy(np, -1);
+		edit = HasData(np);
+	    } else {
+		edit = FALSE;
+	    }
+	} else if (chr == 'x') {	/* C: delete current entry, move down */
+	    if (NoValue(len)) {
+		np = FreeData(np, TRUE);
+		edit = HasData(np);
+	    } else {
+		edit = FALSE;
+	    }
+	} else if (chr == 'u') {	/* C: undo last 'x' command */
+	    if (HasData(np))
+		edit = TRUE;
+	    else
+		screen_alarm();
+	} else if ((test_c = isToggles(chr)) != EOS) {
+	    /* C: toggle current operator */
+	    chr = test_c;
+	    if (UnaryConflict(np, chr)) {
+		screen_alarm();
+	    } else {
+		if (len == 0)
+		    val = np->val;
+		else
+		    edit = TRUE;
+		setval(np, chr, val, np->psh);
+	    }
+	} else {
+	    if (len != 0) {
+		setval(np, np->cmd, val, (len == -1));
+		if (LastData(np) && isCommand(chr)) {
+		    (void) AllocData(np);
+		    np->next->cmd = chr;
+		} else if (LastData(np) && isRepeats(chr)) {
+		    (void) AllocData(np);
+		    np->next->cmd = isRepeats(chr);
+		}
+		Recompute(np);
+	    } else {
+		(void) ShowValue(np, (int *) 0, FALSE);
+	    }
+
+	    repeated = FALSE;
+	    opened = FALSE;
+
+	    if (chr == '?') {	/* C: display help file */
+		ShowHelp();
+	    } else if (chr == '#') {	/* C: edit comment */
+		EditComment(np);
+	    } else if (chr == 'Q') {	/* C: quit w/o changes */
+		return (FALSE);
+	    } else if (chr == 'q') {	/* C: quit */
+		return (TRUE);
+	    } else if (ScreenMovement(&np, chr)) {
+		;
+	    } else if (chr == 'O'	/* C: open before */
+		       || chr == 'o') {		/* C: open after */
+		opened = TRUE;
+		np = OpenLine(np, (chr == 'o'),
+			      &repeated, &edit);
+		if (repeated)
+		    chr = np->cmd;
+	    } else {
+		if ((test_c = isRepeats(chr)) != EOS) {
+		    chr = test_c;
+		    repeated = TRUE;
+		}
+		if (isCommand(chr)) {
+		    np = JumpBy(np, 1);
+		    np->cmd = chr;
+		} else if (chr == EQUALS) {
+		    Recompute(np);
+		} else {
+		    screen_alarm();
+		}
+	    }
+	    if (repeated) {
+		edit = TRUE;
+		setval(np, chr, LastVAL(np, chr), FALSE);
+	    } else if (!opened) {
+		edit = HasData(np);
+	    }
+	}
+    }
 }
 
-static
-void	usage(void)
+static void
+usage(void)
 {
-	static	const	char *tbl[] = {
-	 "Usage: add [options] [scripts]"
+    static const char *tbl[] =
+    {
+	"Usage: add [options] [scripts]"
 	,""
 	,"Options:"
-	,"  -p num       specify precision (default=2)"
+	,"  -h           print this message"
 	,"  -i interval  specify compounding-interval (default=12)"
 	,"  -o script    specify output-script name (default is the first"
 	,"               input-script name)"
+	,"  -p num       specify precision (default=2)"
 	,""
 	,"Description:"
 	,"  Script-based adding machine that allows you to edit the operations"
 	,"  and data."
-	};
-	int j;
+    };
+    unsigned j;
 
-	for (j = 0; j < SIZEOF(tbl); j++)
-		fprintf(stderr, "%s\n", tbl[j]);
-	exit(EXIT_FAILURE);
+    for (j = 0; j < SIZEOF(tbl); j++)
+	fprintf(stderr, "%s\n", tbl[j]);
+    exit(EXIT_FAILURE);
 }
 
 #if !HAVE_GETOPT
-int	optind;
-int	optchr;
-char *	optarg;
+int optind;
+int optchr;
+char *optarg;
 
-int	getopt(int argc, char **argv, char *opts)
+int
+getopt(int argc, char **argv, char *opts)
 {
-	if (++optind < argc
-	 && (optarg = argv[optind]) != 0
-	 && *optarg == '-') {
-		if (*(++optarg) != ':'
-		 && (optchr = *optarg) != EOS
-		 && strchr(opts, *(optarg++)) != 0)
-			return optchr;
-	}
-	return EOF;
+    if (++optind < argc
+	&& (optarg = argv[optind]) != 0
+	&& *optarg == '-') {
+	if (*(++optarg) != ':'
+	    && (optchr = *optarg) != EOS
+	    && strchr(opts, *(optarg++)) != 0)
+	    return optchr;
+    }
+    return EOF;
 }
 #endif
 
-int	main (int argc, char **argv)
+int
+main(int argc, char **argv)
 {
-	long	k;
-	int	j,
-		max_digits,		/* maximum length of a number */
-		changed;
-	char	tmp;
-	Bool	o_option = FALSE;
+    long k;
+    int j;
+    int max_digits;		/* maximum length of a number */
+    int changed;
+    char tmp;
+    Bool o_option = FALSE;
 
-	(void) signal(SIGFPE, SIG_IGN);
-	len_frac = 2;
-	interval= 12;
+    (void) signal(SIGFPE, SIG_IGN);
+    len_frac = 2;
+    interval = 12;
 
-	/*
-	 * Compute the maximum number of digits to display:
-	 *
-	 *	big_long - the maximum positive value that we can stuff into
-	 *		   a 'long'. Assume symmetry, i.e., that we can use
-	 *		   the same negative magnitude.
-	 *	val_width - the maximum length of a formatted number, counting
-	 *		   sign, decimal point and commas between groups
-	 *		   of digits.
-	 */
-	big_long = k = 1;
-	while ((k = (k << 1) + 1) > big_long)
-		big_long = k;
+    /*
+     * Compute the maximum number of digits to display:
+     *
+     *      big_long - the maximum positive value that we can stuff into
+     *                 a 'long'. Assume symmetry, i.e., that we can use
+     *                 the same negative magnitude.
+     *      val_width - the maximum length of a formatted number, counting
+     *                 sign, decimal point and commas between groups
+     *                 of digits.
+     */
+    big_long = k = 1;
+    while ((k = (k << 1) + 1) > big_long)
+	big_long = k;
 
-	for (k = big_long, max_digits = 0; k >= 10; k /= 10)
-		max_digits++;
+    for (k = big_long, max_digits = 0; k >= 10; k /= 10)
+	max_digits++;
 
-	FindHelp(argv[0]);
+    FindHelp(argv[0]);
 
-	while ((j = getopt(argc, argv, "p:i:o:")) != EOF)
-		switch(j) {
-		case 'p':
-			if ((sscanf (optarg, "%d%c", &len_frac, &tmp) != 1)
-			 || (len_frac <= 0 || len_frac > max_digits-2)) {
-				fprintf(stderr, "Option p limited to 0..%d\n",
-					max_digits-2);
-				usage();
-			}
-			break;
-		case 'i':
-			if ((sscanf (optarg, "%d%c", &interval, &tmp) != 1)
-			 || (interval <= 0 || interval > 100)) {
-				fprintf(stderr, "Option i limited to 0..100\n");
-				usage();
-			}
-			break;
-		case 'o':
-			o_option = TRUE;
-			top_output = optarg;
-			break;
-		default:
-			usage();
-		}
-
-	for (j = 0, val_frac = 1.0; j < len_frac; j++)
-		val_frac *= 10.0;
-
-	val_width = 1 + ((max_digits - len_frac) + 2)/3 + max_digits + 1;
-
-	/*
-	 * Allocate some dummy data so we can propagate results from it.
-	 */
-	all_data = 0;
-	for (j = 0; j < 2; j++) {
-		setval (AllocData((DATA *)0), OP_ADD, 0.0, FALSE);
-	}
-	top_data = all_data->next;
-
-	/*
-	 * If we have input scripts, save a pointer to the list:
-	 */
-	if (optind < argc) {
-		if (top_output == 0
-		 && !Fexists(argv[optind]))
-			top_output = argv[optind++];
-		scriptv = argv + optind;
-		for (j = 0; scriptv[j] != 0; j++) {
-			(void)Ok2Read(scriptv[j]);
-		}
-	} else {
-		scriptv = argv + argc;	/* points to a null-pointer */
+    while ((j = getopt(argc, argv, "hi:o:p:")) != EOF)
+	switch (j) {
+	case 'p':
+	    if ((sscanf(optarg, "%d%c", &len_frac, &tmp) != 1)
+		|| (len_frac <= 0 || len_frac > max_digits - 2)) {
+		fprintf(stderr, "Option p limited to 0..%d\n",
+			max_digits - 2);
+		usage();
+	    }
+	    break;
+	case 'i':
+	    if ((sscanf(optarg, "%d%c", &interval, &tmp) != 1)
+		|| (interval <= 0 || interval > 100)) {
+		fprintf(stderr, "Option i limited to 0..100\n");
+		usage();
+	    }
+	    break;
+	case 'o':
+	    o_option = TRUE;
+	    top_output = optarg;
+	    break;
+	case 'h':
+	default:
+	    usage();
 	}
 
-	/*
-	 * Get the default output-filename
-	 */
-	if (optind < argc && !top_output)
-		top_output = argv[argc-1];
+    for (j = 0, val_frac = 1.0; j < len_frac; j++)
+	val_frac *= 10.0;
 
-	if (top_output == 0)
-		top_output = "";
+    val_width = 1 + ((max_digits - len_frac) + 2) / 3 + max_digits + 1;
 
-	/*
-	 * Setup and run the interactive portion of the program.
-	 */
-	screen_start();
-	changed = Loop();
-	screen_finish();
+    /*
+     * Allocate some dummy data so we can propagate results from it.
+     */
+    all_data = 0;
+    for (j = 0; j < 2; j++) {
+	setval(AllocData((DATA *) 0), OP_ADD, 0.0, FALSE);
+    }
+    top_data = all_data->next;
 
-	/*
-	 * If one or more scripts were given as input, and a '-o' argument
-	 * was given, overwrite the last one with the results.
-	 */
-	if (*top_output && changed && scriptCHG)
-		PutScript(top_output);
+    /*
+     * If we have input scripts, save a pointer to the list:
+     */
+    if (optind < argc) {
+	if (top_output == 0
+	    && !Fexists(argv[optind]))
+	    top_output = argv[optind++];
+	scriptv = argv + optind;
+	for (j = 0; scriptv[j] != 0; j++) {
+	    (void) Ok2Read(scriptv[j]);
+	}
+    } else {
+	scriptv = argv + argc;	/* points to a null-pointer */
+    }
+
+    /*
+     * Get the default output-filename
+     */
+    if (optind < argc && !top_output)
+	top_output = argv[argc - 1];
+
+    if (top_output == 0)
+	top_output = "";
+
+    /*
+     * Setup and run the interactive portion of the program.
+     */
+    screen_start();
+    changed = Loop();
+    screen_finish();
+
+    /*
+     * If one or more scripts were given as input, and a '-o' argument
+     * was given, overwrite the last one with the results.
+     */
+    if (*top_output && changed && scriptCHG)
+	PutScript(top_output);
 
 #if NO_LEAKS
-	free(helpfile);
-	while (FreeData(all_data, FALSE) != 0)
-		/*EMPTY*/;
+    free(helpfile);
+    while (FreeData(all_data, FALSE) != 0)
+	/*EMPTY */ ;
 #if HAVE_DBMALLOC_H
-	free(-1);		/* FIXME: force linux+dbmalloc to report */
+    free(-1);			/* FIXME: force linux+dbmalloc to report */
 #endif
 #endif
 
-	return (EXIT_SUCCESS);
+    return (EXIT_SUCCESS);
 }

@@ -1,8 +1,8 @@
-# $Id: makefile.in,v 1.6 1995/12/26 22:59:01 tom Exp $
+# $Id: makefile.in,v 1.11 2002/12/29 21:01:27 tom Exp $
 # Makefile-template for 'add'
 
 THIS = add
-RELEASE = 1
+RELEASE = t20021229
 SCREEN = curses
 
 #### Start of system configuration section. ####
@@ -12,53 +12,52 @@ VPATH  = @srcdir@
 
 CC		= @CC@
 LINK		= $(CC)
-LINT		= @LINT@
 INSTALL		= @INSTALL@
 INSTALL_PROGRAM	= @INSTALL_PROGRAM@
 INSTALL_DATA	= @INSTALL_DATA@
 
 LIBS		= @LIBS@
-CFLAGS		= @CFLAGS@
+CPPFLAGS	= @CPPFLAGS@ -DHAVE_CONFIG_H -DRELEASE=\"$(RELEASE)\" -I. -I$(srcdir)
+CFLAGS		= @CFLAGS@ @EXTRA_CFLAGS@
 LDFLAGS		= @LDFLAGS@
 
 prefix		= @prefix@
 exec_prefix	= @exec_prefix@
 
-bindir		= $(exec_prefix)/bin
-mandir		= $(prefix)/man/man1
+bindir		= $(DESTDIR)@bindir@
+mandir		= $(DESTDIR)@mandir@/man1
 manext		= 1
+
+x		= @PROG_EXT@
 
 #### End of system configuration section. ####
 
 SHELL		= /bin/sh
 
-DEFINES		= -DHAVE_CONFIG_H -DRELEASE=$(RELEASE) @DEFINES@
-INCLUDES	= -I. -I$(srcdir) @INCLUDES@
-CPPFLAGS	= $(DEFINES) $(INCLUDES) @CPPFLAGS@
-
 .c.o:
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $<
 
-SRC =	patchlev.h \
-	CHANGES COPYING README \
-	$(THIS).lsm $(THIS).c $(THIS).h $(THIS).1 \
+SRC =	CHANGES COPYING README \
+	$(THIS).c $(THIS).h $(THIS).1 \
 	curses.c \
-	config_h.in install.sh mkdirs.sh makefile.in configure.in
+	config_h.in install.sh mkdirs.sh makefile.in configure.in \
+	config.guess, config.sub
 
 OBJ = $(THIS).o $(SCREEN).o
 
 DISTFILES = MANIFEST configure $(SRC)
 
-all:	$(THIS)
+PROG	= $(THIS)$x
 
-$(THIS): $(OBJ)
-	-mv $(THIS) o$(THIS)
-	$(LINK) $(CFLAGS) $(LDFLAGS) -o $(THIS) $(OBJ) $(LIBS)
+all:	$(PROG)
+
+$(PROG): $(OBJ)
+	$(LINK) $(CFLAGS) $(LDFLAGS) -o $(PROG) $(OBJ) $(LIBS)
 
 $(OBJ): $(THIS).h screen.h
 
 install: all installdirs
-	$(INSTALL_PROGRAM) $(THIS) $(bindir)/$(THIS)
+	$(INSTALL_PROGRAM) $(PROG) $(bindir)/$(PROG)
 	$(INSTALL_PROGRAM) $(THIS).hlp $(bindir)/$(THIS).hlp
 	$(INSTALL_DATA) $(srcdir)/$(THIS).1 $(mandir)/$(THIS).$(manext)
 
@@ -66,21 +65,15 @@ installdirs:
 	$(SHELL) ${srcdir}/mkdirs.sh $(bindir) $(mandir)
 
 uninstall:
-	rm -f $(bindir)/$(THIS)
+	rm -f $(bindir)/$(PROG)
 	rm -f $(bindir)/$(THIS).hlp
 	rm -f $(mandir)/$(THIS).$(manext)
 
-makefile: makefile.in config.status
-	./config.status
-
-config.status: configure
-	./config.status --recheck
-
 mostlyclean:
-	rm -f *.o o$(THIS) core *~ *.BAK *.trace *.atac
+	rm -f *.o core *~ *.BAK *.trace *.atac
 
 clean: mostlyclean
-	rm -f $(THIS)
+	rm -f $(PROG)
 
 distclean: clean
 	rm -f makefile config.log config.cache config.status config.h
@@ -97,13 +90,13 @@ TAGS:
 # I keep my sources in RCS, and assign a symbolic release to the current patch
 # level.  The 'manifest' script knows how to build a list of files for a given
 # revision.
-MANIFEST: patchlev.h
-	manifest -rv$(RELEASE)`fgrep PATCHLEVEL patchlev.h | sed -e s'/^[^0-9]*/_/'` \
+MANIFEST:
+	manifest -r$(RELEASE) \
 		$(THIS).man testing/case*.dcl testing/case*.bat
 
 dist: MANIFEST
 	- rm -f .fname .files
-	fgrep PATCHLEVEL patchlev.h | sed -e 's/[^0-9.]//g' -e 's/^/$(THIS)-$(RELEASE)./' >.fname
+	echo $(THIS)-$(RELEASE) >.fname
 	cat MANIFEST | grep ' ' | egrep -v ' subdirectory$$' | sed -e 's/\ .*//' | uniq >.files
 	rm -rf `cat .fname`
 	TOP=`cat .fname`; mkdir $$TOP `cat .files | grep / | sed -e 's@/.*@@' | sed -e s@\^@$$TOP/@ | uniq`
@@ -111,19 +104,21 @@ dist: MANIFEST
 	  ln $(srcdir)/$$file `cat .fname`/$$file \
 	    || { echo copying $$file instead; cp $$file `cat .fname`/$$file; }; \
 	done
-	tar -cf - `cat .fname` | gzip >`cat .fname`.tgz
+	tar cf - `cat .fname` | gzip >`cat .fname`.tgz
 	rm -rf `cat .fname` .fname .files
+	ls -l *.tgz
 
 # Some of the output will be uuencoded because the test scripts include
 # <CR><LF> terminated ".bat" files for MS-DOS.
 dist-shar: MANIFEST
 	- rm -f .fname .files
-	fgrep PATCHLEVEL patchlev.h | sed -e 's/[^0-9.]//g' -e 's/^/$(THIS)-$(RELEASE)./' >.fname
+	echo $(THIS)-$(RELEASE) >.fname
 	cat MANIFEST | grep ' ' | egrep -v ' subdirectory$$' | sed -e 's/\ .*//' | uniq >.files
 	shar -M -n`cat .fname` -opart -l50 `cat .files`
 	- rm -f .fname .files
+	ls -l part.*
 
 $(THIS).o:	config.h
 
-check: $(THIS)
+check: $(PROG)
 	cd testing; sh ./run_test.sh	
