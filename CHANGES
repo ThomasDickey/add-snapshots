@@ -1,4 +1,9 @@
-$Id: CHANGES,v 1.3 1995/12/26 23:02:17 tom Exp $
+$Id: CHANGES,v 1.4 1996/04/28 21:32:12 tom Exp $
+
+960428
+	Use scrolling regions if curses supports them.
+
+	Fix to ensure colon-command message stays up til next keystroke.
 
 v1_0 release: 1995/12/26
 ------------

@@ -5,7 +5,7 @@
  * profit made from its use, sale trade or reproduction. You may not change   *
  * this copyright notice, and it must be included in any copy made.           *
  ******************************************************************************/
-static const char Id[] = "$Id: curses.c,v 1.7 1995/12/26 21:51:53 tom Exp $";
+static const char Id[] = "$Id: curses.c,v 1.8 1996/04/28 20:14:58 tom Exp $";
 
 /*
  * Title:	curses.c
@@ -409,4 +409,8 @@ void	screen_start(void)
 	screen_full    = LINES-1;
 	screen_half    = (screen_full+1)/2;
 	screen_active  = TRUE;
+
+#if HAVE_WSETSCRREG
+	setscrreg(2, screen_full);
+#endif
 }
