@@ -1,9 +1,14 @@
-MANIFEST for add, version v0_0
+MANIFEST for add, version v951210
 --------------------------------------------------------------------------------
 MANIFEST                        this file
 add.c                           vi-like adding machine
+add.h                           common definitions for 'add'
 add.hlp                         help-file for "add"
-makefile.unx                    *NIX makefile for "add"
+config_h.in                     template for config.h
+configure.in                    configure-script template
+install.sh                      install script, from X11R5
+makefile.in                     makefile-template for 'add'
+mkdirs.sh                       make directory-hierarchy, from X windows
 patchlev.h                      patch-level of 'add' utility
 porting                         subdirectory
 porting/descrip.mms             VMS build-script for "add"

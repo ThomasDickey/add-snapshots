@@ -1,10 +1,12 @@
-static	char	copyrite[] = "ADD V1.1 -- Copyright 1993 by Thomas E. Dickey";
+static const char Id[] = "$Id: add.c,v 1.9 1995/12/10 22:46:51 tom Exp $";
+static const char copyrite[] = "ADD V1.1 -- Copyright 1993 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
  * Author:	T.E.Dickey
  * Created:	05 May 1986
  * Modified:
+ *		10 Dec 1995, use 'autoconf' script.
  *		02 Apr 1994, fixes to 'ShowValue()' to show result bold.
  *		24 Oct 1993, revised to work with PD Curses 2.1 and Turbo C/C++ 3.0,
  *			     and builtin help-screen.
@@ -14,194 +16,9 @@ static	char	copyrite[] = "ADD V1.1 -- Copyright 1993 by Thomas E. Dickey";
  *		move up and down in the column, modifying the values and
  *		operators.
  *
- * To do:
- *		Try this on VAX/VMS.
- *		Make PD-Curses show more than one set of colors.
- *		Add ^L command for repainting screen.
- *		Add commands for adjusting current precision.
- *		Allow tax and interest rates to have arbitrary precision.
- *		Make '(' and ')' work with X/x.
- *		Add '[' and ']' operators to move-to-bracket.
- *		If '%(' or '$(' given, show auxiliary value at ')'.
- *		Prompt on 'Q'
- *		Provide global-undo facility, routing all updates via 'setval'.
- *		Add ':' commands a la vi/ex, for parameters.
- *		Provide compounding-interval for interest.
  */
 
-#include	<stdio.h>
-#include	<ctype.h>
-#include	<errno.h>
-#include	<stdlib.h>
-#include	<string.h>
-#include	<math.h>
-#include	<signal.h>
-
-#ifndef EXIT_SUCCESS
-#define EXIT_SUCCESS 0
-#define EXIT_FAILURE 1
-#endif
-
-#ifdef unix
-#define PATHSEP ':'
-#endif
-
-#ifdef vms
-#define SYS5_CURSES
-#define PATHSEP ','
-#define A_BOLD _BOLD
-#define KEY_UP    SMG$K_TRM_UP
-#define KEY_DOWN  SMG$K_TRM_DOWN
-#define KEY_LEFT  SMG$K_TRM_LEFT
-#define KEY_RIGHT SMG$K_TRM_RIGHT
-#define KEY_NPAGE SMG$K_TRM_PF3
-#define KEY_PPAGE SMG$K_TRM_PF4
-#define wattrset(w,a) wsetattr(w,a)
-#define wattrclr(w,a) wclrattr(w,a)
-#endif
-
-#ifdef __TURBOC__
-#define SYS5_CURSES	/* PD Curses is close enough */
-#define PATHSEP ';'
-#include <io.h>
-#include <getopt.h>	/* GNU library */
-#else
-extern	char	*optarg;
-extern	int	optind;
-#endif
-
-#include	<curses.h>
-
-/*
- * Hacks to make prototypes work properly
- */
-#ifdef sun
-# ifdef SYS5_CURSES
-	extern	int	beep		(void);
-	extern	int	flash		(void);
-	extern	int	noecho		(void);
-	extern	int	nonl		(void);
-# endif
-	extern	int	endwin		(void);
-	extern	int	keypad		(WINDOW *, int);
-	extern	int	printw		(char *, ...);
-	extern	int	waddstr		(WINDOW *, char *);
-	extern	int	wclrtobot	(WINDOW *);
-	extern	int	wclrtoeol	(WINDOW *);
-	extern	int	wdelch		(WINDOW *);
-	extern	int	wmove		(WINDOW *, int, int);
-	extern	int	wrefresh	(WINDOW *);
-
-	extern	int	access		(char *, int);
-	extern	int	getopt		(int, char **, char *);
-	extern	void	perror		(char *);
-	extern	long	strtol		(char *, char **, int);
-#endif	/* sun */
-
-/*
- * Local declarations:
- */
-#ifndef min
-#define min(a,b) ((a)<(b)?(a):(b))
-#define max(a,b) ((a)>(b)?(a):(b))
-#endif
-
-#ifdef	COLOR_PAIR
-#define	CURRENT_COLOR current_color
-#define SetColors(n)  wattron(stdscr, current_color = COLOR_PAIR(n))
-#else
-#define CURRENT_COLOR 0
-#define SetColors(n)
-#endif
-
-#ifdef SYS5_CURSES
-#define BeginBold()  wattron (stdscr, A_BOLD    | CURRENT_COLOR)
-#define EndOfBold()  wattroff(stdscr, A_BOLD)
-#define BeginHigh()  wattron (stdscr, A_REVERSE | CURRENT_COLOR)
-#define EndOfHigh()  wattroff(stdscr, A_REVERSE)
-#else
-#define BeginBold()  standout()
-#define EndOfBold()  standend()
-#define BeginHigh()  standout()
-#define EndOfHigh()  standend()
-#endif
-
-#define	MAXPATH	256
-#define	MAXBFR	132
-
-#define	SIZEOF(v)	(sizeof(v)/sizeof(v[0]))
-
-	/* Tests for special character types */
-#define	CTL(c)          ((c) & 0x1f)
-#define	VI_UP           'k'
-#define VI_DOWN         'j'
-#define VI_LEFT         'h'
-#define VI_RIGHT        'l'
-#define VI_PPAGE        CTL('B')
-#define VI_NPAGE        CTL('F')
-
-#ifdef SYS5_CURSES
-# define isKey(c,code)  ((c) == code)
-# define isMoveUp(c)    ((c) == VI_UP    || isKey(c, KEY_UP))
-# define isMoveDown(c)  ((c) == VI_DOWN  || isKey(c, KEY_DOWN))
-# define isMoveLeft(c)  ((c) == VI_LEFT  || isKey(c, KEY_LEFT))
-# define isMoveRight(c) ((c) == VI_RIGHT || isKey(c, KEY_RIGHT))
-# define isPageUp(c)    ((c) == VI_PPAGE || isKey(c, KEY_PPAGE))
-# define isPageDown(c)  ((c) == VI_NPAGE || isKey(c, KEY_NPAGE))
-#else
-# define isMoveUp(c)    ((c) == VI_UP)
-# define isMoveDown(c)  ((c) == VI_DOWN)
-# define isMoveLeft(c)  ((c) == VI_LEFT)
-# define isMoveRight(c) ((c) == VI_RIGHT)
-# define isPageUp(c)    ((c) == VI_PPAGE)
-# define isPageDown(c)  ((c) == VI_NPAGE)
-#endif
-
-#define isReturn(c)     ((c) == '\r' || (c) == '\n')
-#define isDigit(c)      (isascii(c) && isdigit(c))
-#define isDelete(c)     ((c) == '\b' || (c) == '\177')
-
-#define LastData(np)    ((np)->next == 0)
-
-	/* Operators */
-#define	OP_ADD	'+'
-#define	OP_SUB	'-'
-#define	OP_MUL	'*'
-#define	OP_DIV	'/'
-#define	OP_INT	'%'
-#define	OP_TAX	'$'
-
-#define	DefaultOp(np) np->cmd
-
-	/* Miscellaneous characters */
-#define	L_PAREN	'('
-#define	R_PAREN	')'
-
-#define	EQUALS	'='
-#define	PERIOD	'.'
-#define	COMMA	','
-#define COLON   ':'
-
-#define	EOS	'\0'
-
-/*
- * Local types
- */
-typedef	int	Bool;
-typedef	double	Value;		/* provides more precision than 'long' */
-
-#define	DATA	struct _oprs
-	DATA {
-	DATA	*next;
-	DATA	*prev;
-	char	*txt;		/* comment, if any */
-	char	cmd;		/* operator */
-	Bool	psh;		/* true if we use left paren instead of 'val' */
-	int	dot;		/* number of digits past '.' */
-	Value	val;		/* operand value */
-	Value	sum;		/* running total */
-	Value	aux;		/* auxiliary value (derived from 'val') */
-	};
+#include <add.h>
 
 static	void	Recompute (DATA *);
 static	void	ShowRange (DATA *, DATA *);
@@ -210,6 +27,7 @@ static	void	ShowFrom  (DATA *);
 /*
  * Common data
  */
+static	char	*top_output;
 static	DATA	*all_data,	/* => beginning of data */
 		*top_data;	/* => beginning of current screen */
 
@@ -231,6 +49,8 @@ static	chtype	current_color;
  */
 static	FILE	*scriptFP;	/* current script file-pointer */
 static  char	**scriptv;	/* pointer to list of input-scripts */
+static	Bool	scriptCHG;	/* set true if there's a change after scripts */
+static	Bool	scriptNUM;	/* set true to 0..n for script number */
 
 /*
  * Help-screen
@@ -275,14 +95,12 @@ int	isVisible(void)
 static
 void	Alarm(void)
 {
-#if defined(SYS5_CURSES) && !defined(vms)
+#if HAVE_FLASH
 	flash();
-#else
-# if defined(sun) || defined(vms)
-	(void) write(2, "\007", 1);	/* Real BSD-curses has 'beep()' */
-# else
+#elif HAVE_BEEP
 	beep();
-# endif
+#else
+	(void) write(2, "\007", 1);	/* Real BSD-curses has 'beep()' */
 #endif
 }
 
@@ -315,6 +133,23 @@ LOOKUP(isRepeats,repeats,Commands[j].command)
 LOOKUP(isToggles,toggles,Commands[j].command)
 LOOKUP(isUnary,command,  Commands[j].isunary)
 
+static
+int	isDelete(int c)
+{
+	switch (c) {
+	case '\b':
+	case '\177':
+#if  defined(KEY_BACKSPACE)
+	case KEY_BACKSPACE:
+#endif
+#if  defined(KEY_DC)
+	case KEY_DC:
+#endif
+		return TRUE;
+	default:
+		return FALSE;
+	}
+}
 /*
  * Find the end of the DATA list
  */
@@ -412,8 +247,8 @@ DATA *	AllocData (DATA *after)
 }
 
 /*
- * Free and delink the data from the list. If it was a permanent entry,
- * recompute the display from that point. Otherwise, simply repaint.
+ * Free and delink the data from the list.  If it was a permanent entry,
+ * recompute the display from that point.  Otherwise, simply repaint.
  */
 static
 DATA *	FreeData (DATA *np, int permanent)
@@ -423,7 +258,8 @@ DATA *	FreeData (DATA *np, int permanent)
 
 	if (prev == 0) {	/* we're at the beginning of the list */
 		all_data = next;
-		next->prev = 0;
+		if (next != 0)
+			next->prev = 0;
 	} else {
 		prev->next = next;
 		if (next != 0) {
@@ -432,15 +268,19 @@ DATA *	FreeData (DATA *np, int permanent)
 			next = prev;
 		}
 	}
+	if (np->txt != 0)
+		free(np->txt);
 	free((char *)np);
 
 	if (top_data == np)
 		top_data = next;
 
-	if (permanent) {
-		Recompute(next);
-	} else {
-		ShowFrom(next);
+	if (cursed) {
+		if (permanent) {
+			Recompute(next);
+		} else {
+			ShowFrom(next);
+		}
 	}
 	return next;
 }
@@ -539,7 +379,8 @@ Value	LastVAL (DATA *np, int cmd)
 static
 char *	Format (char *dst, Value val)
 {
-	int	len, grp, j, neg = val < 0.0;
+	int	len, j, neg = val < 0.0;
+	size_t	grp;
 	char	bfr[MAXBFR],
 		*s = dst;
 
@@ -738,7 +579,7 @@ void	ShowStatus (DATA *np, int opened)
 		move (0,0);
 		clrtoeol();
 		(void) sprintf (buffer, "%d of %d", seq, CountData(last));
-		move (0, COLS-(strlen(buffer)+1));
+		move (0, COLS-((int)strlen(buffer)+1));
 		addstr(buffer);
 		move (0,0);
 		if (opened < 0) {
@@ -750,7 +591,7 @@ void	ShowStatus (DATA *np, int opened)
 					continue;
 				if ((c == R_PAREN) && (opened < 2))
 					continue;
-				addch(c);
+				addch((chtype)c);
 			}
 		} else if (np->cmd != EOS) { /* editing a value */
 			for (j = 0; j < SIZEOF(Commands); j++) {
@@ -810,14 +651,32 @@ void	ShowError (char *msg, char *arg)
 }
 
 /*
+ * Returns true if a file exists, -true if it isn't a file, false if neither.
+ */
+static
+int	Fexists (char *path)
+{
+	struct	stat	sb;
+	if (*path == EOS)
+		ShowError("No filename specified", path);
+	if (stat(path, &sb) < 0)
+		return FALSE;
+	if ((sb.st_mode & S_IFMT) != S_IFREG) {
+		ShowError("Not a file", path);
+		return -TRUE;
+	}
+	return TRUE;
+}
+
+/*
  * Check file-access for writing a script
  */
 static
 int	Ok2Write (char *path)
 {
-	if (*path == EOS) {
-		ShowInfo("No filename specified");
-	} else if (access(path, 02) != 0 && errno != ENOENT) {
+	if (Fexists(path) != -TRUE
+	 && access(path, 02) != 0
+	 && errno != ENOENT) {
 		ShowError("No write access", path);
 	} else {
 		return TRUE;
@@ -859,6 +718,10 @@ void	PutScript (char *path)
 		(void) fprintf (fp, "\n");
 	}
 	(void) fclose (fp);
+
+	/* If we've written the specified output, reset the changed-flag */
+	if (!strcmp(path, top_output))
+		scriptCHG = FALSE;
 }
 
 /*
@@ -869,7 +732,7 @@ int	Ok2Read (char *path)
 {
 	if (scriptFP != 0)
 		ShowError("Cannot nest scripts", path);
-	else if (access(path, 04) != 0)
+	else if (Fexists(path) != TRUE || access(path, 04) != 0)
 		ShowError("No read access", path);
 	else
 		return TRUE;
@@ -885,6 +748,7 @@ int	Ok2Read (char *path)
 static
 int	GetScript(void)
 {
+	static	int	first;
 	static	int	ignored;
 	static	int	comment;
 	register int c;
@@ -899,6 +763,7 @@ int	GetScript(void)
 				scriptv++;
 			} else {
 				ShowInfo("Reading script");
+				first = TRUE;
 			}
 			continue;
 		}
@@ -908,6 +773,8 @@ int	GetScript(void)
 				(void) fclose (scriptFP);
 				scriptFP = NULL;
 				scriptv++;
+				if (!scriptNUM++)
+					scriptCHG = FALSE;
 				continue;
 			}
 			if (c == '#' || c == COLON) {
@@ -916,11 +783,19 @@ int	GetScript(void)
 			} else if (!comment && (c == '\t')) {
 				ignored = TRUE;
 			}
+			if (isReturn(c))
+				first = TRUE;
 			if (ignored && isReturn(c)) {
 				ignored = FALSE;
 			} else if (!ignored) {
 				if (isReturn(c)) {
 					comment = FALSE;
+				} else if (first) {
+					if (isdigit(c)) {
+						ungetc(c, scriptFP);
+						c = OP_ADD;
+					}
+					first = FALSE;
 				}
 				return (c);
 			}
@@ -932,8 +807,15 @@ int	GetScript(void)
 			ShowStatus(last, FALSE);
 			ShowRange(top_data, last);
 			ShowValue(last, editcols, FALSE);
+			first = TRUE;
 			return EQUALS;	/* flush out the last line */
 		}
+	}
+
+	if (first) {
+		if (scriptNUM == 1)
+			scriptCHG = FALSE;
+		first = FALSE;
 	}
 	return EOS;
 }
@@ -951,15 +833,15 @@ int	GetC(void)
 		show_error = FALSE;
 		refresh();
 		c = getch();
-#ifdef	__TURBOC__	/* actually PD Curses */
+#if	SYS_MSDOS || defined(linux)	/* actually PD Curses */
 		switch (c) {
 		case PADSLASH:	c = OP_DIV;	break;
 		case PADSTAR:	c = OP_MUL;	break;
 		case PADPLUS:	c = OP_ADD;	break;
 		case PADMINUS:	c = OP_SUB;	break;
 		case PADENTER:	c = '\n';	break;
-#endif
 		}
+#endif
 	}
 	return (c);
 }
@@ -1026,7 +908,7 @@ int	InsertChar (char *buffer, int chr, int pos, int limit)
 				delch();
 				move(y, x);
 			}
-			insch(chr);
+			insch((chtype)chr);
 			move(y,x+1);
 		}
 	}
@@ -1130,7 +1012,7 @@ void	EditBuffer (char *buffer, int length)
 		chr = GetC();
 		if (isReturn(chr)) {
 			done = TRUE;
-		} else if (isascii(chr) && (isprint(chr) || isspace(chr))) {
+		} else if (isAscii(chr) && (isprint(chr) || isspace(chr))) {
 			if (strlen(buffer) < end-1)
 				col = InsertChar(buffer, chr, col, 0);
 			else
@@ -1231,7 +1113,7 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 			buffer[0] = L_PAREN;
 			buffer[1] = EOS;
 		} else {
-			register int c, len, dot;
+			register int len, dot;
 			register char *s;
 
 			(void) sprintf (buffer, "%0*.0f", len_frac, np->val);
@@ -1245,7 +1127,7 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 			buffer[dot] = PERIOD;
 		}
 		if (isVisible()) {
-			move(row, editcols[0] + val_width - strlen(buffer));
+			move(row, (int)(editcols[0] + val_width - strlen(buffer)));
 			addstr (buffer);
 		}
 	} else {
@@ -1256,6 +1138,7 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 		move(row, editcols[0] + val_width);
 	col = strlen(buffer);
 	nesting = (*buffer == L_PAREN);
+	c = EOS;
 
 	while (!done) {
 		if (old_digit) {
@@ -1394,6 +1277,7 @@ int	NoValue (int len)
 static
 int	Calculate (DATA *np, DATA *old)
 {
+	Bool same;
 	Value before = np->sum;
 
 	np->sum = (old->prev) ? old->prev->sum : 0.0;
@@ -1426,13 +1310,20 @@ int	Calculate (DATA *np, DATA *old)
 		np->sum += np->aux;
 		break;
 	}
-	return (before == np->sum);
+
+	same = (before == np->sum)
+		&& (before < big_long)
+		&& (before > -big_long);
+
+	if (isVisible() && !same)
+		scriptCHG = TRUE;
+	return (same);
 }
 
 /*
  * Given a pointer 'np' into the operand list, and (possibly) new 'cmd' and
- * 'val' components, propagate the computation to the end of the vector, showing
- * the result on the screen.
+ * 'val' components, propagate the computation to the end of the vector,
+ * showing the result on the screen.
  */
 static
 void	Recompute (DATA *base)
@@ -1455,7 +1346,7 @@ void	Recompute (DATA *base)
 				op = np;
 			}
 			same = Calculate(np, op);
-			if (level == 0 && same)
+			if ((level == 0) && same)
 				break;
 		}
 		np = np->next;
@@ -1676,7 +1567,7 @@ DATA *	ColonCommand (DATA *np)
 			while (isspace(*param))
 				param++;
 			switch (*reply) {
-			case '$':
+			case '$': /* FALLTHRU */
 			case '%':
 				np = JumpTo(np, CountAllData());
 				break;
@@ -1684,9 +1575,10 @@ DATA *	ColonCommand (DATA *np)
 				np = all_data->next;
 				while (np->next != 0)
 					np = FreeData(np, TRUE);
+				save_top = top_data;
 				setval(np, OP_ADD, 0.0, FALSE);
 				Recompute(np);
-				/* fall-thru */
+				/* FALLTHRU */
 			case 'r':
 				if (Ok2Read(param)) {
 					static	char	*argv[2];
@@ -1697,6 +1589,8 @@ DATA *	ColonCommand (DATA *np)
 			case 'w':
 				if (*param == EOS)
 					param = last_write;
+				if (*param == EOS)
+					param = top_output;
 				if (Ok2Write(param)) {
 					last_write = AllocString(param);
 					PutScript(param);
@@ -1810,7 +1704,7 @@ void	ShowHelp(void)
 		BeginBold();
 		clrtoeol();
 		(void) sprintf(buffer, "line %d of %d", CountData(np), end);
-		move (0, COLS - (strlen(buffer)+1));
+		move (0, (int)(COLS - (strlen(buffer)+1)));
 		addstr(buffer);
 		move (0, 0);
 		(void) printw("%s -- ", copyrite);
@@ -1870,7 +1764,7 @@ void	FindHelp (char *program)
 #else
 	char	temp[BUFSIZ];
 	register char *s = strcpy(temp, program);
-# ifdef	VMS
+# if SYS_VMS
 	for (s += strlen(temp); s != temp; s--)
 		if (s[-1] == ']' || s[-1] == ':')
 			break;
@@ -2024,11 +1918,27 @@ int	Loop(void)
 static
 void	usage(void)
 {
-	(void) printf ("usage: add [-p num] [-i interval] [-o script] scripts\n");
+	static	const	char *tbl[] = {
+	 "Usage: add [options] [scripts]"
+	,""
+	,"Options:"
+	,"  -p num       specify precision (default=2)"
+	,"  -i interval  specify compounding-interval (default=12)"
+	,"  -o script    specify output-script name (default is the first"
+	,"               input-script name)"
+	,""
+	,"Description:"
+	,"  Script-based adding machine that allows you to edit the operations"
+	,"  and data."
+	};
+	int j;
+
+	for (j = 0; j < SIZEOF(tbl); j++)
+		fprintf(stderr, "%s\n", tbl[j]);
 	exit(EXIT_FAILURE);
 }
 
-#if defined(vms) && !defined(GETOPT_H)
+#if !HAVE_GETOPT
 int	optind;
 int	optchr;
 char *	optarg;
@@ -2053,7 +1963,8 @@ int	main (int argc, char **argv)
 	int	j,
 		max_digits,		/* maximum length of a number */
 		changed;
-	char	*output = NULL, tmp;
+	char	tmp;
+	Bool	o_option = FALSE;
 
 	(void) signal(SIGFPE, SIG_IGN);
 	len_frac = 2;
@@ -2091,7 +2002,8 @@ int	main (int argc, char **argv)
 				usage();
 			break;
 		case 'o':
-			output = optarg;
+			o_option = TRUE;
+			top_output = optarg;
 			break;
 		default:
 			usage();
@@ -2115,6 +2027,9 @@ int	main (int argc, char **argv)
 	 * If we have input scripts, save a pointer to the list:
 	 */
 	if (optind < argc) {
+		if (top_output == 0
+		 && !Fexists(argv[optind]))
+			top_output = argv[optind++];
 		scriptv = argv + optind;
 		for (j = 0; scriptv[j] != 0; j++) {
 			(void)Ok2Read(scriptv[j]);
@@ -2126,18 +2041,20 @@ int	main (int argc, char **argv)
 	/*
 	 * Verify if we will be able to write an output file:
 	 */
-	if (optind < argc && !output)
-		output = argv[argc-1];
+	if (optind < argc && !top_output)
+		top_output = argv[argc-1];
 
-	if (output != 0)
-		(void)Ok2Write(output);
+	if (top_output == 0)
+		top_output = "";
+	if (*top_output != EOS)
+		(void)Ok2Write(top_output);
 
 	/*
 	 * Setup and run the interactive portion of the program.
 	 */
 	if (initscr () == 0)	/* should return a "WINDOW *" */
 		exit(EXIT_FAILURE);
-#if defined(SYS5_CURSES) && !defined(vms)
+#if HAVE_KEYPAD
 	keypad(stdscr, TRUE);
 #endif
 #if defined(COLOR_BLUE) && defined(COLOR_WHITE) && defined(COLOR_PAIR)
@@ -2145,9 +2062,15 @@ int	main (int argc, char **argv)
 		start_color();
 		init_pair(1, COLOR_WHITE, COLOR_BLUE);	/* normal */
 		SetColors(1);
+#if HAVE_BKGD
+		bkgd(CURRENT_COLOR);
+#endif
 	}
 #endif
-#if defined(__TURBOC__) && defined(F_GRAY) && defined(B_BLUE)
+#if HAVE_TYPEAHEAD
+	typeahead(-1);	/* disable typeahead */
+#endif
+#if SYS_MSDOS && defined(F_GRAY) && defined(B_BLUE)
 	wattrset(stdscr, F_GRAY | B_BLUE); /* patch for old PD-Curses */
 #endif
 	raw(); nonl(); noecho();
@@ -2159,11 +2082,20 @@ int	main (int argc, char **argv)
 	cursed  = FALSE;	/* flag showing that curses is off */
 
 	/*
-	 * If one or more scripts were given as input, and no '-o' argument
+	 * If one or more scripts were given as input, and a '-o' argument
 	 * was given, overwrite the last one with the results.
 	 */
-	if (output && changed)
-		PutScript(output);
+	if (*top_output && changed && scriptCHG)
+		PutScript(top_output);
+
+#if NO_LEAKS
+	free(helpfile);
+	while (FreeData(all_data, FALSE) != 0)
+		/*EMPTY*/;
+#if HAVE_DBMALLOC_H
+	free(-1);		/* FIXME: force linux+dbmalloc to report */
+#endif
+#endif
 
 	return (EXIT_SUCCESS);
 }
