@@ -1,0 +1,271 @@
+.\"*****************************************************************************
+.\" Copyright 1995 by Thomas E. Dickey.  All Rights Reserved.                  *
+.\"                                                                            *
+.\" You may freely copy or redistribute this software, so long as there is no  *
+.\" profit made from its use, sale trade or reproduction. You may not change   *
+.\" this copyright notice, and it must be included in any copy made.           *
+.\"*****************************************************************************
+.\" $Id: add.1,v 1.2 1995/12/11 01:43:15 tom Exp $
+.de EX
+.RS
+.nf
+.sp
+.fam C	\" groff: Courier
+..
+.de EE
+.fi
+.RE
+.sp .5
+.fam T	\" groff: Times-Roman (default)
+..
+.
+.TH ADD 1
+.hy 0
+.
+.SH NAME
+\fBadd\fR \- full-screen editing calculator
+.
+.SH USAGE
+\fBadd\fI [options] [file-specifications]
+.
+.SH SYNOPSIS
+\fBAdd\fR is a fixed-point calculator that operates as a full-screen editor.
+.
+.SH DESCRIPTION
+\fBAdd\fR performs fixed-point computation.
+It is designed for use as a checkbook or expense-account balancing tool.
+.PP
+\fBAdd\fR maintains a running result for each operation.
+You may scroll to any position in the expression list and modify the list.
+Enter data by typing numbers (with optional decimal point),
+separated by operators.
+.PP
+An output transcript may be saved and reloaded for further editing.
+Scripts are loaded from left to right (with the "output" processed first).
+.
+.SH OPTIONS
+Command line options of \fBadd\fR are:
+.
+.TP
+.BI \-p " num"
+Sets precision (number of digits after the decimal place).
+.TP
+.BI \-i " interval"
+Sets compounding interval for interest computation.
+.TP
+.BI \-o " script"
+Specify file in which to save output transcript.
+.
+.SH OPERATIONS
+.
+.SS Computations:
+.
+The operators are all single-character:
+.
+.TP
+.B "+"
+begins an addition
+.TP
+.B "-"
+begins a subtraction
+.TP
+.B "*"
+begins a multiplication
+.TP
+.B "/"
+begins a division
+.TP
+.B "%"
+begins an interest computation (uses \fIinterval\fR): rate=number.
+.TP
+.B "$"
+begins a sales-tax computation: rate=number.
+.TP
+.B "("
+opening parenthesis.
+This may enclose a unary '-', more parentheses, or data
+(implicit unary '+').
+.TP
+.B ")"
+closing parenthesis, expects another operator, not data.
+.TP
+.B "="
+flushes out the current number, forces re-computation of the running result.
+.
+.PP
+A space flushes out the current number-input, and (by default) sets the
+next operator to be the same as the current one.
+You may repeat the last arithmetic operation of any type:
+.
+.TP
+.B "a"
+repeats the last '+' (default 0).
+.TP
+.B "s"
+repeats the last '-' (default 0).
+.TP
+.B "m"
+repeats the last '*' (default 1).
+.TP
+.B "d"
+repeats the last '/' (default 1).
+.TP
+.B "i"
+repeats the last '%' (default 4).
+.TP
+.B "t"
+repeats the last '$' (default 4).
+.
+.PP
+You may toggle the prefix operator of any number by typing a single
+character:
+.
+.TP
+.B "A"
+toggles the operator to '+'.
+.TP
+.B "S"
+toggles the operator to '-'.
+.TP
+.B "M"
+toggles the operator to '*'.
+.TP
+.B "D"
+toggles the operator to '/'.
+.TP
+.B "I"
+toggles the operator to '%'.
+.TP
+.B "T"
+toggles the operator to '$'.
+.
+.SS Editing:
+.
+As you enter data, you may edit it.
+A backspace deletes the last digit
+of the current number (if it is visible).
+Use the arrow keys or
+vi-style 'h' and 'l' to move left and right within the line.
+Other editing commands include
+.
+.TP
+.B "u"
+undoes the last x/X command (restricted to restoring the
+current data only).
+.TP
+.B "x"
+deletes the current data.
+If the data is null, deletes the following line.
+.TP
+.B "X"
+deletes the current data.
+If the data is null, deletes the preceding line and moves up.
+.TP
+.B "o"
+opens a new line after the current line.
+.TP
+.B "O"
+opens a new line before the current line.
+.TP
+.B "#"
+edit the associated comment.
+.
+.PP
+An "open" permits you to insert a new operator and data into the
+expression list.
+You may type an operator character (e.g., '+'), and
+continue with the new data, or an operator-repeat (e.g., 'A').
+In either case, you may edit the new data, just as you would the old data.
+A 'u' (or other toggle, such as 'o', 'O', or 'q') typed after an open
+will undo the open (and close it).
+.
+.SS Scrolling/cursor movement:
+.
+.TP
+.B H
+move to the top line on the screen.
+.TP
+.B M
+move to the middle line on the screen.
+.TP
+.B L
+move to the last line on the screen
+.TP
+.B CTL/F
+scroll forward one screen.
+.TP
+.B CTL/B
+scroll backward one screen.
+.TP
+.B j
+move forward one line.
+.TP
+.B k
+move backward one line.
+.TP
+.B z<CR>
+move the current line to the top of the screen.
+.TP
+.B z.
+move the current line to the middle of the screen.
+.TP
+.B z-
+move the current line to the bottom of the screen.
+.
+.PP
+Like \fBvi\fR,
+\fBadd\fR allows you to jump to a particular line with a ":" command
+.
+.TP
+.B :$
+jumps to the last entry
+.TP
+.B :1
+jumps to the first entry.
+.
+.SS Scripts:
+.
+Transcript files are formatted to permit line-oriented entries:
+.
+.EX
+<operator><value><tab><ignored><tab># comment
+.EE
+.PP
+The transcripts saved by \fBadd\fR contain the running result in the
+"ignored" part.
+To exit without saving a transcript, type 'Q'.
+A
+normal exit, by typing 'q', saves the list of operators, data (and
+running result) in the specified file.
+.PP
+You can read and write scripts without leaving \fBadd\fR.
+.
+.TP
+.BI :w " file"
+writes a script to the specified file.
+.TP
+.BI :r " file"
+reads a script at the current entry
+.TP
+.BI :e " file"
+clears the current script and reads a script from the file.
+.
+.SH ENVIRONMENT
+\fBAdd\fR runs in a portable UNIX\*R environment.
+.
+.SH FILES
+\fBAdd\fR is a single binary module, with a help file \fBadd.hlp\fR
+installed in the same directory.
+.
+.SH FUTURE WORK
+It would be nice to be able to change the precision within the program.
+In particular, the interest and sales tax computations would be more
+useful if their precision was independent of the running total.
+.
+.SH AUTHOR
+Thomas Dickey (dickey@clark.net).
+.
+.SH SEE ALSO
+.PP
+wc\ (1),
+vi\ (1)

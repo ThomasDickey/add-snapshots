@@ -1,24 +1,37 @@
-static const char Id[] = "$Id: add.c,v 1.9 1995/12/10 22:46:51 tom Exp $";
-static const char copyrite[] = "ADD V1.1 -- Copyright 1993 by Thomas E. Dickey";
+/******************************************************************************
+ * Copyright 1995 by Thomas E. Dickey.  All Rights Reserved.                  *
+ *                                                                            *
+ * You may freely copy or redistribute this software, so long as there is no  *
+ * profit made from its use, sale trade or reproduction. You may not change   *
+ * this copyright notice, and it must be included in any copy made.           *
+ ******************************************************************************/
+static const char Id[] = "$Id: add.c,v 1.26 1995/12/27 00:47:04 tom Exp $";
+static const char copyrite[] = "Copyright 1995 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
  * Author:	T.E.Dickey
  * Created:	05 May 1986
- * Modified:
- *		10 Dec 1995, use 'autoconf' script.
- *		02 Apr 1994, fixes to 'ShowValue()' to show result bold.
- *		24 Oct 1993, revised to work with PD Curses 2.1 and Turbo C/C++ 3.0,
- *			     and builtin help-screen.
+ * Modified:	(see CHANGES)
  *
  * Function:	This is a simple adding machine that uses curses to display
  *		a column of values, operators and results.  The user can
  *		move up and down in the column, modifying the values and
  *		operators.
- *
  */
 
+#include <patchlev.h>
 #include <add.h>
+#include <screen.h>
+
+#define	SALLOC(s) (s *)malloc(sizeof(s))
+
+#define	SSTACK	struct	SStack
+	SSTACK	{
+	SSTACK	*next;
+	FILE	*sfp;
+	char	**sscripts;
+	};
 
 static	void	Recompute (DATA *);
 static	void	ShowRange (DATA *, DATA *);
@@ -34,19 +47,15 @@ static	DATA	*all_data,	/* => beginning of data */
 static  Value	val_frac;      	/* # of units in 'len_frac' (e.g., 100.0) */
 static	long	big_long;	/* largest signed 'long' value */
 static	int	interval,	/* compounding interval-divisor */
-		half,		/* scrolling amount */
-		full,		/* screen-size */
 		val_width,	/* maximum width of formatted number */
 		len_frac;	/* nominal number of digits after period */
-static	Bool	cursed,		/* true while we've got curses running */
-		show_error;	/* suppress normal reporting until GetC() */
-#ifdef	COLOR_PAIR
-static	chtype	current_color;
-#endif
+static	Bool	show_error,	/* suppress normal reporting until GetC() */
+		show_scripts;	/* force script to be visible, for testing */
 
 /*
  * Input-script control:
  */
+static	SSTACK	*sstack;	/* script-stack */
 static	FILE	*scriptFP;	/* current script file-pointer */
 static  char	**scriptv;	/* pointer to list of input-scripts */
 static	Bool	scriptCHG;	/* set true if there's a change after scripts */
@@ -86,33 +95,7 @@ static	struct	{
 static
 int	isVisible(void)
 {
-	return (scriptFP == 0);
-}
-
-/*
- * Beep (or flash, preferably) when we get a minor error.
- */
-static
-void	Alarm(void)
-{
-#if HAVE_FLASH
-	flash();
-#elif HAVE_BEEP
-	beep();
-#else
-	(void) write(2, "\007", 1);	/* Real BSD-curses has 'beep()' */
-#endif
-}
-
-/*
- * Returns current column
- */
-static
-int	CurrentCol(void)
-{
-	int	y, x;
-	getyx(stdscr, y, x);
-	return x;
+	return show_scripts || (scriptFP == 0);
 }
 
 /*
@@ -133,23 +116,6 @@ LOOKUP(isRepeats,repeats,Commands[j].command)
 LOOKUP(isToggles,toggles,Commands[j].command)
 LOOKUP(isUnary,command,  Commands[j].isunary)
 
-static
-int	isDelete(int c)
-{
-	switch (c) {
-	case '\b':
-	case '\177':
-#if  defined(KEY_BACKSPACE)
-	case KEY_BACKSPACE:
-#endif
-#if  defined(KEY_DC)
-	case KEY_DC:
-#endif
-		return TRUE;
-	default:
-		return FALSE;
-	}
-}
 /*
  * Find the end of the DATA list
  */
@@ -216,7 +182,7 @@ char *	AllocString (char *src)
 static
 DATA *	AllocData (DATA *after)
 {
-	register DATA *np = (DATA *)malloc(sizeof(DATA));
+	register DATA *np = SALLOC(DATA);
 
 	np->txt = 0;
 	np->val =
@@ -275,7 +241,7 @@ DATA *	FreeData (DATA *np, int permanent)
 	if (top_data == np)
 		top_data = next;
 
-	if (cursed) {
+	if (screen_active) {
 		if (permanent) {
 			Recompute(next);
 		} else {
@@ -419,7 +385,7 @@ void	putval (Value val)
 {
 	char	bfr[MAXBFR];
 
-	(void) printw ("%*.*s", val_width, val_width, Format(bfr, val));
+	screen_printf ("%*.*s", val_width, val_width, Format(bfr, val));
 }
 
 /*
@@ -456,7 +422,7 @@ static
 DATA *	ScreenBottom(void)
 {
 	register DATA *np = top_data;
-	register int  count = full;
+	register int  count = screen_full;
 
 	while (--count > 0) {
 		if (!LastData(np))
@@ -484,62 +450,63 @@ int	ShowValue (DATA *np, int *editing, Bool comment)
 			editing[0] =
 			editing[1] = 0;
 		}
-	} else if (row >= 0 && row < full) {
+	} else if (row >= 0 && row < screen_full) {
 		char	cmd = isprint(np->cmd) ? np->cmd : '?';
 
-		move(row+1, col);
-		clrtoeol();
+		screen_set_position(row+1, col);
+		screen_clear_endline();
 		if (np->cmd != EOS) {
 			for (level = LevelOf(np); level > 0; level--)
-				addstr(". ");
+				screen_puts(". ");
 			if (editing != 0) {
-				BeginHigh();
-				(void) printw(" %c>>", cmd);
-				EndOfHigh();
+				screen_set_reverse(TRUE);
+				screen_printf(" %c>>", cmd);
+				screen_set_reverse(FALSE);
 			} else {
-				(void) printw(" %c: ", cmd);
+				screen_printf(" %c: ", cmd);
 			}
 
 			if (editing != 0) {
-				*editing = CurrentCol();
-				BeginHigh();
+				*editing = screen_col();
+				screen_set_reverse(TRUE);
 			}
 
 			if ((cmd == R_PAREN) || ((editing != 0) && !comment))
-				(void) printw ("%*.*s", val_width, val_width, " ");
+				screen_printf ("%*.*s", val_width, val_width, " ");
 			else if (np->psh)
-				addch(L_PAREN);
+				screen_putc(L_PAREN);
 			else
 				putval(np->val);
 
 			if (editing != 0)
-				EndOfHigh();
+				screen_set_reverse(FALSE);
 
 			if (!np->psh) {
-				addstr(" ");
-				if (editing != 0) BeginBold();
+				screen_puts(" ");
+				if (editing != 0) screen_set_bold(TRUE);
 				putval(np->sum);
-				if (editing != 0) EndOfBold();
+				if (editing != 0) screen_set_bold(FALSE);
 			}
 			if (cmd == OP_INT || cmd == OP_TAX) {
-				addstr(" ");
+				screen_puts(" ");
 				putval(np->aux);
 			}
 
-			col = CurrentCol();
+			col = screen_col();
 			if (editing != 0)
 				editing[1] = col;
-			col += 4;
-			if ((np->txt != 0) && (col < COLS))
-				addstr(" # ");
+			col += 3;
+			if ((np->txt != 0) && screen_cols_left(col) > 3)
+				screen_puts(" # ");
 		}
 
-		if ((np->txt != 0) && (col < COLS)) {
-			(void) printw("%.*s", COLS - col - 1, np->txt);
+		if ((np->txt != 0)
+		 && screen_cols_left(col) > 0) {
+			screen_printf("%.*s", screen_cols_left(col), np->txt);
 		}
-		if (LastData(np) && (row < LINES-2)) {
-			move(row+2, 0);
-			clrtobot();
+		if (LastData(np) && screen_rows_left(row) > 1) {
+			screen_set_position(row+2, 0);
+			screen_clear_bottom();
 		}
 	}
 	return row;
@@ -550,7 +517,7 @@ void	ShowRange (DATA *first, DATA *last)
 {
 	register DATA *np = first;
 	while (np != last) {
-		if (ShowValue(np, (int *)0, FALSE) >= full)
+		if (ShowValue(np, (int *)0, FALSE) >= screen_full)
 			break;
 		np = np->next;
 	}
@@ -575,39 +542,43 @@ void	ShowStatus (DATA *np, int opened)
 	char	buffer[BUFSIZ];
 
 	if (!show_error && isVisible()) {
-		BeginBold();
-		move (0,0);
-		clrtoeol();
+		screen_set_bold(TRUE);
+		screen_set_position (0,0);
+		screen_clear_endline();
 		(void) sprintf (buffer, "%d of %d", seq, CountData(last));
-		move (0, COLS-((int)strlen(buffer)+1));
-		addstr(buffer);
-		move (0,0);
+		screen_set_position (0, screen_cols_left((int)strlen(buffer)));
+		screen_puts(buffer);
+		screen_set_position (0,0);
 		if (opened < 0) {
-			addstr("Edit comment (press return to exit)");
+			screen_puts("Edit comment (press return to exit)");
 		} else if (opened > 0) {
-			addstr("Open-line expecting ");
+			screen_puts("Open-line expecting operator ");
 			for (j = 0; j < SIZEOF(Commands); j++) {
+				c = Commands[j].command;
+				if (!isUnary(c) && FirstData(np))
+					continue;
 				if ((c = Commands[j].command) == L_PAREN)
 					continue;
 				if ((c == R_PAREN) && (opened < 2))
 					continue;
-				addch((chtype)c);
+				screen_putc(c);
 			}
+			screen_puts(" or oO to cancel");
 		} else if (np->cmd != EOS) { /* editing a value */
 			for (j = 0; j < SIZEOF(Commands); j++) {
 				if (Commands[j].command == np->cmd) {
-					(void) printw("  %s", Commands[j].explain);
+					screen_printf("  %s", Commands[j].explain);
 					break;
 				}
 			}
-			move (0, 5 + val_width);
+			screen_set_position (0, 5 + val_width);
 			putval(last->sum);
-			addstr(" -- total");
+			screen_puts(" -- total");
 		}
-		EndOfBold();
+		screen_set_bold(FALSE);
 	}
 	if (isVisible())
-		move(seq-top+1,0);
+		screen_set_position(seq-top+1,0);
 }
 
 /*
@@ -616,14 +587,8 @@ void	ShowStatus (DATA *np, int opened)
 static
 void	ShowInfo (char *msg)
 {
-	if (cursed) {	/* we've started curses */
-		int y, x;
-		getyx(stdscr, y, x);
-		move(0,0);
-		addstr(msg);
-		clrtoeol();
-		move(y,x);
-		refresh();
+	if (screen_active) {	/* we've started curses */
+		screen_message("%s", msg);
 	} else {
 		(void) printf("%s\n", msg);
 	}
@@ -635,12 +600,10 @@ void	ShowInfo (char *msg)
 static
 void	ShowError (char *msg, char *arg)
 {
-	static	char	format[] = "?? %s \"%s\"";
+	static	const	char	format[] = "?? %s \"%s\"";
 
-	if (cursed) {	/* we've started curses */
-		char	temp[BUFSIZ];
-		(void) sprintf(temp, format, msg, arg);
-		ShowInfo(temp);
+	if (screen_active) {	/* we've started curses */
+		screen_message(format, msg, arg);
 		show_error = TRUE;
 	} else {
 		(void) fprintf(stderr, format, msg, arg);
@@ -730,13 +693,83 @@ void	PutScript (char *path)
 static
 int	Ok2Read (char *path)
 {
-	if (scriptFP != 0)
-		ShowError("Cannot nest scripts", path);
-	else if (Fexists(path) != TRUE || access(path, 04) != 0)
+	if (Fexists(path) != TRUE || access(path, 04) != 0)
 		ShowError("No read access", path);
 	else
 		return TRUE;
 	return FALSE;
+}
+
+/*
+ * Save the current script-state and nest a new one.
+ */
+static
+void	PushScripts(char *script)
+{
+	SSTACK	*p = SALLOC(SSTACK);
+	p->next     = sstack;
+	p->sfp      = scriptFP;
+	p->sscripts = scriptv;
+	sstack      = p;
+
+	scriptFP    = 0;
+	scriptv     = (char **)calloc(2, sizeof(char *));
+	scriptv[0]  = AllocString(script);
+}
+
+/*
+ * Restore a previous script-state, if any.
+ */
+static
+int	PopScripts(void)
+{
+	SSTACK	*p;
+
+	scriptFP = 0;
+	scriptv  = 0;
+	if ((p = sstack) != 0) {
+		scriptFP = p->sfp;
+		scriptv  = p->sscripts;
+		sstack   = p->next;
+	}
+	return (scriptFP != 0);
+}
+
+/*
+ * On end-of-file, go to the next script (or resume the parent script)
+ */
+static
+void	NextScript(void)
+{
+	(void) fclose(scriptFP);
+	scriptFP = 0;
+	if (!*(++scriptv))
+		PopScripts();
+}
+
+/*
+ * Read from a script, checking for end-of-file, and performing control-char
+ * conversion.
+ */
+static
+int	ReadScript(void)
+{
+	int	c = fgetc(scriptFP);
+	if (feof(scriptFP) || ferror(scriptFP)) {
+		NextScript();
+		if (!scriptNUM++)
+			scriptCHG = FALSE;
+		c = EOF;
+	} else if (c == '^') {
+		c = ReadScript();
+		if (c == EOF)
+			c = '^';	/* we'll get an EOF on the next call */
+		else if (c == '?')
+			c = '\177';	/* delete */
+		else
+			c &= 037;
+	}
+	return c;
 }
 
 /*
@@ -753,7 +786,7 @@ int	GetScript(void)
 	static	int	comment;
 	register int c;
 
-	while (*scriptv != NULL) {
+	while (scriptv != 0 && *scriptv != 0) {
 		int was_invisible = !isVisible();
 
 		if (scriptFP == 0) {
@@ -768,15 +801,8 @@ int	GetScript(void)
 			continue;
 		}
 		while (scriptFP != 0) {
-			c = fgetc(scriptFP);
-			if (feof(scriptFP) || ferror(scriptFP)) {
-				(void) fclose (scriptFP);
-				scriptFP = NULL;
-				scriptv++;
-				if (!scriptNUM++)
-					scriptCHG = FALSE;
+			if ((c = ReadScript()) == EOF)
 				continue;
-			}
 			if (c == '#' || c == COLON) {
 				comment = TRUE;
 				ignored = FALSE;
@@ -831,24 +857,14 @@ int	GetC(void)
 
 	if ((c = GetScript()) == EOS) {
 		show_error = FALSE;
-		refresh();
-		c = getch();
-#if	SYS_MSDOS || defined(linux)	/* actually PD Curses */
-		switch (c) {
-		case PADSLASH:	c = OP_DIV;	break;
-		case PADSTAR:	c = OP_MUL;	break;
-		case PADPLUS:	c = OP_ADD;	break;
-		case PADMINUS:	c = OP_SUB;	break;
-		case PADENTER:	c = '\n';	break;
-		}
-#endif
+		c = screen_getc();
 	}
 	return (c);
 }
 
 /*
- * Given a string, offset into it and insert-position, delete the character at that offset,
- * both from the string and screen. Return the resulting position.
+ * Given a string, offset into it and insert-position, delete the character at
+ * that offset, both from the string and screen.  Return the resulting offset.
  */
 static
 int	DeleteChar (char *buffer, int offset, int pos, int limit)
@@ -861,18 +877,19 @@ int	DeleteChar (char *buffer, int offset, int pos, int limit)
 		;
 
 	if (isVisible()) {	/* update the display */
-		getyx(stdscr, y, x);	/* get current insert-position */
+		y = screen_row();
+		x = screen_col();	/* get current insert-position */
 		col = x - pos + offset;	/* assume pos < len, offset < len */
-		move(y, col);
-		delch();
+		screen_set_position(y, col);
+		screen_delete_char();
 		if (limit > 0 && strlen(buffer) < limit) {
-			move(y, col - offset);
-			insch(' ');
+			screen_set_position(y, col - offset);
+			screen_insert_char(' ');
 			x++;
 		}
 		if (pos > offset)
 			x--;
-		move(y, x);
+		screen_set_position(y, x);
 	}
 	if (pos > offset)
 		pos--;
@@ -881,14 +898,14 @@ int	DeleteChar (char *buffer, int offset, int pos, int limit)
 
 /*
  * Insert a character into the given string, returning the updated insert
- * position.  If the "limit" parameter is nonzero, we keep the buffer
+ * position.  If the "rmargin" parameter is nonzero, we keep the buffer
  * right-justified to that limit.
  */
 static
-int	InsertChar (char *buffer, int chr, int pos, int limit)
+int	InsertChar (char *buffer, int chr, int pos, int lmargin, int rmargin, int *offset)
 {
 	int	y, x;
-	int	len = strlen(buffer);
+	int	len	= strlen(buffer);
 	register char	*t;
 
 	/* perform the actual insertion into the buffer */
@@ -900,16 +917,26 @@ int	InsertChar (char *buffer, int chr, int pos, int limit)
 	t[0] = chr;
 
 	if (isVisible()) {	/* update the display on the screen */
-		getyx(stdscr, y, x);	/* get current insert-position */
-		if (x < COLS-1) {
-			if (limit > 0) {
+		y = screen_row();
+		x = screen_col();
+		if (screen_cols_left(x) > 0) {
+			if (rmargin > 0) {
 				x--;
-				move(y, x - pos);
-				delch();
-				move(y, x);
+				screen_set_position(y, x - pos);
+				screen_delete_char();
+				screen_set_position(y, x);
 			}
-			insch((chtype)chr);
-			move(y,x+1);
+			screen_insert_char(chr);
+			screen_set_position(y,x+1);
+		} else if (offset != 0) {
+			screen_set_position(y, lmargin);
+			screen_delete_char();
+			screen_set_position(y, x-1);
+			screen_insert_char(chr);
+			screen_set_position(y, x);
+				*offset += 1;
+		} else {
+			screen_alarm();
 		}
 	}
 	return pos+1;
@@ -924,40 +951,8 @@ int	doDeleteChar (char *buffer, int col, int limit)
 	if (col > 0) {
 		col = DeleteChar(buffer, col-1, col, limit);
 	} else {
-		Alarm();
+		screen_alarm();
 	}
-	return col;
-}
-
-/*
- * Move left within the given buffer.
- */
-static
-int	doMoveLeft (int col)
-{
-	if (col > 0) {
-		register int	y, x;
-		getyx(stdscr, y, x);
-		move(y, x-1);
-		col--;
-	} else
-		Alarm();
-	return col;
-}
-
-/*
- * Move right within the given buffer.
- */
-static
-int	doMoveRight (char *buffer, int col)
-{
-	if (col < strlen(buffer)) {
-		register int	y, x;
-		getyx(stdscr, y, x);
-		move(y, x+1);
-		col++;
-	} else
-		Alarm();
 	return col;
 }
 
@@ -992,7 +987,7 @@ DATA *	Balance (DATA *np, int level)
 }
 
 /*
- * Edit an arbitrary buffer
+ * Edit an arbitrary buffer, starting at the current screen position.
  */
 static
 void	EditBuffer (char *buffer, int length)
@@ -1000,31 +995,56 @@ void	EditBuffer (char *buffer, int length)
 	int	end, chr;
 	int	col  = strlen(buffer);
 	int	done = FALSE;
+	int	offset = 0;
+	int	lmargin = screen_col();
+	int	shown = FALSE;
 
-	end = COLS - CurrentCol() - 1;
+	end = screen_cols_left(lmargin);
 	end = min(end, length);
-	if (isVisible()) {
-		(void) printw("%.*s", end, buffer);
-		clrtoeol();
-	}
-
+	if (end < strlen(buffer))
+		offset = strlen(buffer) - end;
 	while (!done) {
+		while (col - offset < 0) {
+			offset--;
+			shown = FALSE;
+		}
+		while (col - offset > end) {
+			offset++;
+			shown = FALSE;
+		}
+		if (isVisible() && !shown) {
+			int x;
+			screen_set_position(screen_row(), lmargin);
+			screen_printf("%.*s", end, buffer + offset);
+			if(screen_cols_left(x = screen_col()) > 0) {
+				screen_set_position(screen_row(), x);
+				screen_clear_endline();
+			}
+			screen_set_position(screen_row(), lmargin + col - offset);
+			shown = TRUE;
+		}
 		chr = GetC();
 		if (isReturn(chr)) {
 			done = TRUE;
-		} else if (isAscii(chr) && (isprint(chr) || isspace(chr))) {
-			if (strlen(buffer) < end-1)
-				col = InsertChar(buffer, chr, col, 0);
+		} else if (isAscii(chr) && isprint(chr)) {
+			if (strlen(buffer) < length-1)
+				col = InsertChar(buffer, chr, col, lmargin, 0, &offset);
 			else
-				Alarm();
-		} else if (isDelete(chr)) {
+				screen_alarm();
+		} else if (is_delete_left(chr)) {
 			col = doDeleteChar(buffer, col, 0);
-		} else if (isMoveLeft(chr)) {
-			col = doMoveLeft(col);
-		} else if (isMoveRight(chr)) {
-			col = doMoveRight(buffer, col);
+		} else if (is_left_char(chr)) {
+			col = screen_move_left(col, 0);
+		} else if (is_right_char(chr)) {
+			col = screen_move_right(col, (int)strlen(buffer));
+		} else if (is_home_char(chr)) {
+			while (col > 0)
+				col = screen_move_left(col, 0);
+		} else if (is_end_char(chr)) {
+			while (col < (int)strlen(buffer))
+				col = screen_move_right(col, (int)strlen(buffer));
 		} else {
-			Alarm();
+			screen_alarm();
 		}
 	}
 }
@@ -1044,8 +1064,8 @@ void	EditComment (DATA *np)
 	ShowStatus(np, -1);
 	row = ShowValue(np, editcols, TRUE) + 1;
 	if (isVisible()) {
-		move(row, editcols[1]);
-		addstr(" # ");
+		screen_set_position(row, editcols[1]);
+		screen_puts(" # ");
 	}
 	EditBuffer(buffer, sizeof(buffer));
 	TrimString(buffer);
@@ -1092,10 +1112,11 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 		editcols[3],
 		done = FALSE,
 		was_visible = isVisible(),
+		lmargin = screen_col(),
 		nesting;		/* if we find left parenthesis rather than number */
 	char	buffer[MAXBFR];		/* current input value */
 
-	static	char	old_digit = EOS;	/* nonzero iff we have pending digit */
+	static	char	old_digit = EOS; /* nonzero iff we have pending digit */
 
 	if (np->cmd == R_PAREN)
 		edit = FALSE;
@@ -1104,8 +1125,8 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 	row = ShowValue(np, editcols, FALSE) + 1;
 
 	if (isVisible()) {
-		move(row, editcols[0]);
-		BeginHigh();
+		screen_set_position(row, editcols[0]);
+		screen_set_reverse(TRUE);
 	}
 
 	if (edit) {
@@ -1127,15 +1148,15 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 			buffer[dot] = PERIOD;
 		}
 		if (isVisible()) {
-			move(row, (int)(editcols[0] + val_width - strlen(buffer)));
-			addstr (buffer);
+			screen_set_position(row, (int)(editcols[0] + val_width - strlen(buffer)));
+			screen_puts (buffer);
 		}
 	} else {
 		buffer[0] = EOS;
 	}
 
 	if (isVisible())
-		move(row, editcols[0] + val_width);
+		screen_set_position(row, editcols[0] + val_width);
 	col = strlen(buffer);
 	nesting = (*buffer == L_PAREN);
 	c = EOS;
@@ -1149,14 +1170,14 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 		}
 
 		/*
-		 * If the current operator is a right parenthesis, we must have an operator
-		 * following, with no data intervening:
+		 * If the current operator is a right parenthesis, we must have
+		 * an operator following, with no data intervening:
 		 */
 		if (np->cmd == R_PAREN) {
 			if (isDigit(c)
 			 || (c == PERIOD)
 			 || (c == L_PAREN)) {
-				Alarm ();
+				screen_alarm ();
 			} else {
 				*len_ = -2;
 				done  = TRUE;
@@ -1164,16 +1185,23 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 		}
 		/*
 		 * Move left/right within the buffer to adjust the insertion
-		 * position
+		 * position. In curses mode, CTL/F and CTL/B are conflicting.
 		 */
-		else if (isMoveLeft(c))
-			col = doMoveLeft(col);
-		else if (isMoveRight(c))
-			col = doMoveRight(buffer, col);
+		else if (is_left_char(c) && !is_up_page(c)) {
+			col = screen_move_left(col, 0);
+		} else if (is_right_char(c) && !is_down_page(c)) {
+			col = screen_move_right(col, (int)strlen(buffer));
+		} else if (is_home_char(c)) {
+			while (col > 0)
+				col = screen_move_left(col, 0);
+		} else if (is_end_char(c)) {
+			while (col < (int)strlen(buffer))
+				col = screen_move_right(col, (int)strlen(buffer));
+		}
 		/*
 		 * Backspace deletes the last character entered:
 		 */
-		else if (isDelete(c)) {
+		else if (is_delete_left(c)) {
 			col = doDeleteChar(buffer, col, val_width);
 			if (*buffer == EOS)
 				nesting = FALSE;
@@ -1184,9 +1212,9 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 		 */
 		else if (c == L_PAREN) {
 			if (*buffer != EOS) {
-				Alarm ();
+				screen_alarm ();
 			} else {
-				col = InsertChar(buffer, c, col, val_width);
+				col = InsertChar(buffer, c, col, lmargin, val_width, (int *)0);
 				nesting = TRUE;
 			}
 		}
@@ -1196,7 +1224,7 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 		 */
 		else if (nesting) {
 			if (UnaryConflict(np, c))
-				Alarm();
+				screen_alarm();
 			else {
 				if (isDigit(c) || c == PERIOD) {
 					old_digit = c;
@@ -1210,8 +1238,15 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 		 * Otherwise, we assume we have a normal value which we are
 		 * decoding:
 		 */
-		else if (isDigit(c))
-			col = InsertChar(buffer, c, col, val_width);
+		else if (isDigit(c)) {
+			int	limit = val_width;
+			if (strchr(buffer, '.') == 0)
+				limit -= (1 + len_frac);
+			if (strlen(buffer) > limit)
+				screen_alarm();
+			else
+				col = InsertChar(buffer, c, col, lmargin, val_width, (int *)0);
+		}
 		/*
 		 * Decimal point can be entered once for each number. If we
 		 * get another, simply move it to the new position.
@@ -1220,7 +1255,7 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 			register int dot;
 			if ((dot = DecimalPoint(buffer)) >= 0)
 				col = DeleteChar(buffer, dot, col, val_width);
-			col = InsertChar(buffer, c, col, val_width);
+			col = InsertChar(buffer, c, col, lmargin, val_width, (int *)0);
 		}
 		/*
 		 * Otherwise, we assume a new operator-character for the
@@ -1256,7 +1291,7 @@ int	EditValue (DATA *np, int *len_, Value *val_, int edit)
 		}
 	}
 	if (was_visible)
-		EndOfHigh();
+		screen_set_reverse(FALSE);
 	return (c);
 }
 
@@ -1282,6 +1317,7 @@ int	Calculate (DATA *np, DATA *old)
 
 	np->sum = (old->prev) ? old->prev->sum : 0.0;
 	switch (old->cmd) {
+	default:
 	case OP_ADD:
 		np->sum += np->val;
 		break;
@@ -1342,6 +1378,10 @@ void	Recompute (DATA *base)
 				level--;
 				np->val = np->prev->sum;
 				op = Balance(np, level);
+				if (op == 0) {
+					op = all_data;
+					level = 0;
+				}
 			} else {
 				op = np;
 			}
@@ -1383,7 +1423,7 @@ DATA *	OpenLine (DATA *base, int after, int *repeated, int *edit)
 			top_data = top_data->prev;
 		}
 	} else {
-		this_row -= (full - 2);
+		this_row -= (screen_full - 2);
 		while (this_row-- > 0)
 			top_data = top_data->next;
 	}
@@ -1394,11 +1434,16 @@ DATA *	OpenLine (DATA *base, int after, int *repeated, int *edit)
 	else
 		ShowFrom(top_data);
 	ShowStatus(np, TRUE + nested);
-	clrtoeol();
+	screen_clear_endline();
 	*edit = FALSE;	/* assume we'll get some new data */
 
 	while (!done) {
-		switch (chr = GetC()) {
+		chr = GetC();
+		if (UnaryConflict(np, chr)) {
+			screen_alarm();
+			continue;
+		}
+		switch (chr) {
 		case OP_INT:			/* sC: open to interest */
 		case OP_TAX:			/* sC: open to sales tax */
 						/* patch: provide defaults */
@@ -1440,7 +1485,7 @@ DATA *	OpenLine (DATA *base, int after, int *repeated, int *edit)
 			*edit = TRUE;	/* go back to the original */
 			break;
 		default:
-			Alarm();
+			screen_alarm();
 		}
 	}
 	return (np);
@@ -1477,9 +1522,9 @@ DATA *	ScrollBy (DATA *np, int amount)
 }
 
 /*
- * Compute a one-line movement of the cursor. The interaction between the
- * 'flush' and 'amount' arguments compensates for other adjustments to the
- * current data pointer in the calling functions.
+ * Compute a one-line movement of the cursor.  The 'amount' argument
+ * compensates for other adjustments to the current data pointer in the calling
+ * functions.
  */
 static
 DATA *	JumpBy (DATA *np, int amount)
@@ -1512,8 +1557,8 @@ DATA *	JumpBy (DATA *np, int amount)
 		Bool	adjust = TRUE;
 		if (next_seq < top)
 			top_data = np;
-		else if (next_seq >= top+full)
-			top_data = FindData(next_seq - full + 1);
+		else if (next_seq >= top+screen_full)
+			top_data = FindData(next_seq - screen_full + 1);
 		else
 			adjust = FALSE;
 		if (adjust)
@@ -1543,13 +1588,13 @@ DATA *	ColonCommand (DATA *np)
 	char	*reply;
 	static	char	*last_write = "";
 
-	if (CountFromTop(np) >= full-1) {
+	if (CountFromTop(np) >= screen_full-1) {
 		top_data = top_data->next;
 		ShowFrom(top_data);
 	}
-	move(LINES-1,0);
-	addch(COLON);
-	addch(' ');
+	screen_set_position(screen_full,0);
+	screen_putc(COLON);
+	screen_putc(' ');
 	*buffer = EOS;
 	EditBuffer(buffer, sizeof(buffer));
 	TrimString(buffer);
@@ -1580,11 +1625,8 @@ DATA *	ColonCommand (DATA *np)
 				Recompute(np);
 				/* FALLTHRU */
 			case 'r':
-				if (Ok2Read(param)) {
-					static	char	*argv[2];
-					argv[0] = AllocString(param);
-					scriptv = argv;
-				}
+				if (Ok2Read(param))
+					PushScripts(param);
 				break;
 			case 'w':
 				if (*param == EOS)
@@ -1596,8 +1638,11 @@ DATA *	ColonCommand (DATA *np)
 					PutScript(param);
 				}
 				break;
+			case 'x':
+				show_scripts = TRUE;
+				break;
 			default:
-				Alarm();
+				screen_alarm();
 			}
 		}
 	}
@@ -1631,30 +1676,46 @@ int	ScreenMovement (DATA **pp, int chr)
 			int	top = CountData(top_data);
 			int	seq = CountData(np);
 			if (chr == '-') { /* use current entry as end */
-				top = seq - full + 1;
+				top = seq - screen_full + 1;
 			} else {
-				top = seq - (CountData(ScreenBottom()) - top)/2;
+				top = seq - screen_half + 1;
 			}
 			top = max(top, 1);
 			top_data = FindData(top);
 		}
 		ShowFrom(top_data);
+#ifdef KEY_HOME
+	} else if (chr == KEY_HOME) {	/* C: move to first entry in list */
+		np = all_data->next;
+		ShowFrom(top_data = np);
+#endif
+#ifdef KEY_END
+	} else if (chr == KEY_END) {	/* C: move to last entry in list */
+		int	top, seq;
+
+		np = EndOfData();
+		seq = CountData(np);
+		top = seq - screen_full + 1;
+		top = max(top, 1);
+		top_data = FindData(top);
+		ShowFrom(top_data);
+#endif
 	} else if (chr == 'H') {	/* C: move to first entry on screen */
 		np = top_data;
 	} else if (chr == 'L') {	/* C: move to last entry on screen */
 		np = ScreenBottom();
-	} else if (isMoveDown(chr)) {	/* C: move down 1 line */
+	} else if (is_down_char(chr)) {	/* C: move down 1 line */
 		np = JumpBy(np, 1);
-	} else if (isMoveUp(chr)) {	/* C: move up 1 line */
+	} else if (is_up_char(chr)) {	/* C: move up 1 line */
 		np = JumpBy(np, -1);
 	} else if (chr == CTL('D')) {	/* C: scroll forward 1/2 screen */
-		np = ScrollBy(np, half);
+		np = ScrollBy(np, screen_half);
 	} else if (chr == CTL('U')) {	/* C: scroll backward 1/2 screen */
-		np = ScrollBy(np, -half);
-	} else if (isPageDown(chr)) {	/* C: scroll forward one screen */
-		np = ScrollBy(np, full);
-	} else if (isPageUp(chr)) {	/* C: scroll backward one screen */
-		np = ScrollBy(np, -full);
+		np = ScrollBy(np, -screen_half);
+	} else if (is_down_page(chr)) {	/* C: scroll forward one screen */
+		np = ScrollBy(np, screen_full);
+	} else if (is_up_page(chr)) {	/* C: scroll backward one screen */
+		np = ScrollBy(np, -screen_full);
 	} else {
 		ok = FALSE;
 	}
@@ -1700,21 +1761,21 @@ void	ShowHelp(void)
 	ShowFrom(all_data);
 
 	while (!done) {
-		move(0, 0);
-		BeginBold();
-		clrtoeol();
+		screen_set_position(0, 0);
+		screen_set_bold(TRUE);
+		screen_clear_endline();
 		(void) sprintf(buffer, "line %d of %d", CountData(np), end);
-		move (0, (int)(COLS - (strlen(buffer)+1)));
-		addstr(buffer);
-		move (0, 0);
-		(void) printw("%s -- ", copyrite);
-		EndOfBold();
-		move(CountFromTop(np)+1, 0);
+		screen_set_position (0, screen_cols_left((int)strlen(buffer)));
+		screen_puts(buffer);
+		screen_set_position (0, 0);
+		screen_printf("ADD v%d_%d -- %s -- ", RELEASE, PATCHLEVEL, copyrite);
+		screen_set_bold(FALSE);
+		screen_set_position(CountFromTop(np)+1, 0);
 		chr = GetC();
 		if (chr == 'q' || chr == 'Q') {
 			done = TRUE;
 		} else if (!ScreenMovement(&np, chr)) {
-			Alarm();
+			screen_alarm();
 		}
 	}
 
@@ -1737,7 +1798,10 @@ int	AbsolutePath (char *path)
 	if (isalpha(*path) && path[1] == ':')
 		path += 2;
 #endif
-	return isSlash(*path);
+	return isSlash(*path)
+	   ||  ((*path++ == '.')
+	     && (isSlash(*path)
+	      || (*path++ == '.' && isSlash(*path))));
 }
 
 static
@@ -1752,9 +1816,9 @@ char *	PathLeaf (char *path)
 #endif
 
 /*
- * Find the help-file. On UNIX and MSDOS, we look for the file in the
- * same directory as that in which this program is stored, located by
- * searching the PATH environment variable.
+ * Find the help-file.  On UNIX and MSDOS, we look for the file in the same
+ * directory as that in which this program is stored, located by searching the
+ * PATH environment variable.
  */
 static
 void	FindHelp (char *program)
@@ -1845,12 +1909,12 @@ int	Loop(void)
 			if (HasData(np))
 				edit = TRUE;
 			else
-				Alarm();
+				screen_alarm();
 		} else if ((test_c = isToggles(chr)) != EOS) {
 			/* C: toggle current operator */
 			chr = test_c;
 			if (UnaryConflict(np, chr)) {
-				Alarm ();
+				screen_alarm ();
 			} else {
 				if (len == 0)
 					val = np->val;
@@ -1861,10 +1925,12 @@ int	Loop(void)
 		} else {
 			if (len != 0) {
 				setval (np, np->cmd, val, (len == -1));
-				if (LastData(np)
-				 && (isCommand(chr) || isRepeats(chr))) {
+				if (LastData(np) && isCommand(chr)) {
 					(void)AllocData(np);
-					np->next->cmd = DefaultOp(np);
+					np->next->cmd = chr;
+				} else if (LastData(np) && isRepeats(chr)) {
+					(void)AllocData(np);
+					np->next->cmd = isRepeats(chr);
 				}
 				Recompute (np);
 			} else {
@@ -1902,7 +1968,7 @@ int	Loop(void)
 				} else if (chr == EQUALS) {
 					Recompute(np);
 				} else {
-					Alarm();
+					screen_alarm();
 				}
 			}
 			if (repeated) {
@@ -1993,13 +2059,18 @@ int	main (int argc, char **argv)
 		switch(j) {
 		case 'p':
 			if ((sscanf (optarg, "%d%c", &len_frac, &tmp) != 1)
-			 || (len_frac <= 0 || len_frac > max_digits-2))
+			 || (len_frac <= 0 || len_frac > max_digits-2)) {
+				fprintf(stderr, "Option p limited to 0..%d\n",
+					max_digits-2);
 				usage();
+			}
 			break;
 		case 'i':
 			if ((sscanf (optarg, "%d%c", &interval, &tmp) != 1)
-			 || (interval <= 0 || interval > 100))
+			 || (interval <= 0 || interval > 100)) {
+				fprintf(stderr, "Option i limited to 0..100\n");
 				usage();
+			}
 			break;
 		case 'o':
 			o_option = TRUE;
@@ -2039,47 +2110,20 @@ int	main (int argc, char **argv)
 	}
 
 	/*
-	 * Verify if we will be able to write an output file:
+	 * Get the default output-filename
 	 */
 	if (optind < argc && !top_output)
 		top_output = argv[argc-1];
 
 	if (top_output == 0)
 		top_output = "";
-	if (*top_output != EOS)
-		(void)Ok2Write(top_output);
 
 	/*
 	 * Setup and run the interactive portion of the program.
 	 */
-	if (initscr () == 0)	/* should return a "WINDOW *" */
-		exit(EXIT_FAILURE);
-#if HAVE_KEYPAD
-	keypad(stdscr, TRUE);
-#endif
-#if defined(COLOR_BLUE) && defined(COLOR_WHITE) && defined(COLOR_PAIR)
-	if (has_colors()) {
-		start_color();
-		init_pair(1, COLOR_WHITE, COLOR_BLUE);	/* normal */
-		SetColors(1);
-#if HAVE_BKGD
-		bkgd(CURRENT_COLOR);
-#endif
-	}
-#endif
-#if HAVE_TYPEAHEAD
-	typeahead(-1);	/* disable typeahead */
-#endif
-#if SYS_MSDOS && defined(F_GRAY) && defined(B_BLUE)
-	wattrset(stdscr, F_GRAY | B_BLUE); /* patch for old PD-Curses */
-#endif
-	raw(); nonl(); noecho();
-	full    = LINES-1;
-	half    = (full+1)/2;
-	cursed  = TRUE;
+	screen_start();
 	changed = Loop();
-	endwin ();
-	cursed  = FALSE;	/* flag showing that curses is off */
+	screen_finish();
 
 	/*
 	 * If one or more scripts were given as input, and a '-o' argument

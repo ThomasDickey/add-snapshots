@@ -1,0 +1,5 @@
+$Id: README,v 1.1 1995/12/26 22:50:39 tom Exp $
+
+The test-scripts in this directory are designed to provide reasonably wide (but
+not exhaustive ;-) coverage of the logic in 'add'.  I used 'atac' to tune the
+test scripts.

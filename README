@@ -1,0 +1,11 @@
+$Id: README,v 1.1 1995/12/11 01:46:33 tom Exp $
+
+--------------------------------------------------------------------------------
+
+-- Author: T.E.Dickey
+
+ADD is a full-screen tape editor that lets the user edit a calculation.
+It is a curses application.
+
+It's more suitable for balancing a checkbook than a spreadsheet or any of the
+various hand-calculator clones.
