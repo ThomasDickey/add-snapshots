@@ -1,4 +1,4 @@
-MANIFEST for add, version v1_0
+MANIFEST for add, version v960428
 --------------------------------------------------------------------------------
 MANIFEST                        this file
 CHANGES                         summary of changes to 'add'
@@ -17,6 +17,9 @@ makefile.in                     makefile-template for 'add'
 mkdirs.sh                       make directory-hierarchy, from X windows
 patchlev.h                      patch-level of 'add' utility
 screen.h                        interface to $(SCREEN).c
+porting                         subdirectory
+porting/descrip.mms             VMS build-script for "add"
+porting/vms_link.opt            VMS link-options for "add"
 testing                         subdirectory
 testing/README                  description of test-scripts
 testing/case00.add              input-script for test-case00

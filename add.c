@@ -1,12 +1,12 @@
 /******************************************************************************
- * Copyright 1995 by Thomas E. Dickey.  All Rights Reserved.                  *
+ * Copyright 1996 by Thomas E. Dickey.  All Rights Reserved.                  *
  *                                                                            *
  * You may freely copy or redistribute this software, so long as there is no  *
  * profit made from its use, sale trade or reproduction. You may not change   *
  * this copyright notice, and it must be included in any copy made.           *
  ******************************************************************************/
-static const char Id[] = "$Id: add.c,v 1.26 1995/12/27 00:47:04 tom Exp $";
-static const char copyrite[] = "Copyright 1995 by Thomas E. Dickey";
+static const char Id[] = "$Id: add.c,v 1.27 1996/04/28 21:30:17 tom Exp $";
+static const char copyrite[] = "Copyright 1996 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -654,11 +654,14 @@ static
 void	PutScript (char *path)
 {
 	DATA	*np;
-	FILE	*fp = fopen(path, "w");
+	FILE	*fp = (path && *path) ? fopen(path, "w") : 0;
 	char	buffer[MAXBFR];
+	int	count = 0;
 
-	if (fp == 0)
+	if (fp == 0) {
 		ShowError("Cannot open output", path);
+		return;
+	}
 
 	(void) sprintf (buffer, "Writing results to \"%s\"", path);
 	ShowInfo(buffer);
@@ -679,12 +682,18 @@ void	PutScript (char *path)
 		if (np->txt != 0)
 			(void) fprintf(fp, "\t#%s", np->txt);
 		(void) fprintf (fp, "\n");
+		count++;
 	}
 	(void) fclose (fp);
 
 	/* If we've written the specified output, reset the changed-flag */
 	if (!strcmp(path, top_output))
 		scriptCHG = FALSE;
+
+	(void) sprintf (buffer, "Wrote %d line%s to \"%s\"",
+		count, count != 1 ? "s" : "", path);
+	ShowInfo(buffer);
+	show_error++;		/* force the message to stay until next char */
 }
 
 /*
@@ -1592,6 +1601,8 @@ DATA *	ColonCommand (DATA *np)
 		top_data = top_data->next;
 		ShowFrom(top_data);
 	}
+	ShowStatus(np, FALSE);		/* in case we have multiple prompts */
+
 	screen_set_position(screen_full,0);
 	screen_putc(COLON);
 	screen_putc(' ');
