@@ -1,0 +1,4 @@
+#!/bin/sh
+rm *.trace
+run_test.sh *.add
+atac -u add.trace ../*.atac

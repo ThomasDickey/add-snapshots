@@ -1,0 +1,8 @@
+#!/bin/sh
+MORE=vile-pager; export MORE
+if test $# = 0
+then
+	atac -u add.trace ../*.atac
+else
+	(atac $* add.trace ../*.atac) 2>&1 |vile
+fi

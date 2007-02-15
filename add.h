@@ -1,11 +1,25 @@
 /******************************************************************************
- * Copyright 1995 by Thomas E. Dickey.  All Rights Reserved.                  *
+ * Copyright 1995-2002,2007 by Thomas E. Dickey                               *
+ * All Rights Reserved.                                                       *
  *                                                                            *
- * You may freely copy or redistribute this software, so long as there is no  *
- * profit made from its use, sale trade or reproduction. You may not change   *
- * this copyright notice, and it must be included in any copy made.           *
+ * Permission to use, copy, modify, and distribute this software and its      *
+ * documentation for any purpose and without fee is hereby granted, provided  *
+ * that the above copyright notice appear in all copies and that both that    *
+ * copyright notice and this permission notice appear in supporting           *
+ * documentation, and that the name of the above listed copyright holder(s)   *
+ * not be used in advertising or publicity pertaining to distribution of the  *
+ * software without specific, written prior permission.                       *
+ *                                                                            *
+ * THE ABOVE LISTED COPYRIGHT HOLDER(S) DISCLAIM ALL WARRANTIES WITH REGARD   *
+ * TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND  *
+ * FITNESS, IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE  *
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES          *
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN      *
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR *
+ * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
-/* $Id: add.h,v 1.9 2002/12/29 20:01:38 tom Exp $
+
+/* $Id: add.h,v 1.11 2007/02/15 00:36:47 tom Exp $
  *
  * common definitions for 'add' utility
  */
@@ -179,9 +193,10 @@
 #define VI_PPAGE        CTL('B')
 #define VI_NPAGE        CTL('F')
 
+#define UCH(c)		((unsigned char)c)
 #define isAscii(c)	((c) < 128)	/* isascii isn't portable */
 #define isReturn(c)     ((c) == '\r' || (c) == '\n')
-#define isDigit(c)      (isAscii(c) && isdigit(c))
+#define isDigit(c)      (isAscii(c) && isdigit(UCH(c)))
 
 #define LastData(np)    ((np)->next == 0)
 
