@@ -1,12 +1,26 @@
 /******************************************************************************
- * Copyright 1996,2002 by Thomas E. Dickey.  All Rights Reserved.             *
+ * Copyright 1994-2002,2007 by Thomas E. Dickey                               *
+ * All Rights Reserved.                                                       *
  *                                                                            *
- * You may freely copy or redistribute this software, so long as there is no  *
- * profit made from its use, sale trade or reproduction. You may not change   *
- * this copyright notice, and it must be included in any copy made.           *
+ * Permission to use, copy, modify, and distribute this software and its      *
+ * documentation for any purpose and without fee is hereby granted, provided  *
+ * that the above copyright notice appear in all copies and that both that    *
+ * copyright notice and this permission notice appear in supporting           *
+ * documentation, and that the name of the above listed copyright holder(s)   *
+ * not be used in advertising or publicity pertaining to distribution of the  *
+ * software without specific, written prior permission.                       *
+ *                                                                            *
+ * THE ABOVE LISTED COPYRIGHT HOLDER(S) DISCLAIM ALL WARRANTIES WITH REGARD   *
+ * TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND  *
+ * FITNESS, IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE  *
+ * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES          *
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN      *
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR *
+ * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
-static const char Id[] = "$Id: add.c,v 1.37 2002/12/29 20:52:56 tom Exp $";
-static const char copyrite[] = "Copyright 1996,2002 by Thomas E. Dickey";
+
+static const char Id[] = "$Id: add.c,v 1.40 2007/02/15 00:47:32 tom Exp $";
+static const char copyrite[] = "Copyright 1994-2002,2007 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -164,7 +178,7 @@ TrimString(char *src)
     register char *end = src + strlen(src);
 
     while (end-- != src) {
-	if (isspace(*end))
+	if (isspace(UCH(*end)))
 	    *end = EOS;
 	else
 	    break;
@@ -457,7 +471,7 @@ ShowValue(DATA * np, int *editing, Bool comment)
 		editing[1] = 0;
 	}
     } else if (row >= 0 && row < screen_full) {
-	char cmd = isprint(np->cmd) ? np->cmd : '?';
+	char cmd = isprint(UCH(np->cmd)) ? np->cmd : '?';
 
 	screen_set_position(row + 1, col);
 	screen_clear_endline();
@@ -835,7 +849,7 @@ GetScript(void)
 		if (isReturn(c)) {
 		    comment = FALSE;
 		} else if (first) {
-		    if (isdigit(c)) {
+		    if (isdigit(UCH(c))) {
 			ungetc(c, scriptFP);
 			c = OP_ADD;
 		    }
@@ -1063,7 +1077,7 @@ EditBuffer(char *buffer, int length)
 	chr = GetC();
 	if (isReturn(chr)) {
 	    done = TRUE;
-	} else if (isAscii(chr) && isprint(chr)) {
+	} else if (isAscii(chr) && isprint(UCH(chr))) {
 	    if ((int) strlen(buffer) < length - 1)
 		col = InsertChar(buffer, chr, col, lmargin, 0, &offset);
 	    else
@@ -1653,17 +1667,17 @@ ColonCommand(DATA * np)
     EditBuffer(buffer, sizeof(buffer));
     TrimString(buffer);
     reply = buffer;
-    while (isspace(*reply))
+    while (isspace(UCH(*reply)))
 	reply++;
 
     if (*reply != EOS) {
-	if (isdigit(*reply)) {
+	if (isdigit(UCH(*reply))) {
 	    char *dst;
 	    int seq = (int) strtol(reply, &dst, 0);
 	    np = JumpTo(np, seq);
 	} else {
 	    char *param = reply + 1;
-	    while (isspace(*param))
+	    while (isspace(UCH(*param)))
 		param++;
 	    switch (*reply) {
 	    case '$':		/* FALLTHRU */
@@ -1856,7 +1870,7 @@ static int
 AbsolutePath(char *path)
 {
 #if	!defined(unix) && !defined(vms)		/* assume MSDOS */
-    if (isalpha(*path) && path[1] == ':')
+    if (isalpha(UCH(*path)) && path[1] == ':')
 	path += 2;
 #endif
     return isSlash(*path)
@@ -2067,6 +2081,7 @@ usage(void)
 	,"  -o script    specify output-script name (default is the first"
 	,"               input-script name)"
 	,"  -p num       specify precision (default=2)"
+	,"  -V           print the version"
 	,""
 	,"Description:"
 	,"  Script-based adding machine that allows you to edit the operations"
@@ -2132,7 +2147,7 @@ main(int argc, char **argv)
 
     FindHelp(argv[0]);
 
-    while ((j = getopt(argc, argv, "hi:o:p:")) != EOF)
+    while ((j = getopt(argc, argv, "hi:o:p:V")) != EOF)
 	switch (j) {
 	case 'p':
 	    if ((sscanf(optarg, "%d%c", &len_frac, &tmp) != 1)
@@ -2156,6 +2171,9 @@ main(int argc, char **argv)
 	case 'h':
 	default:
 	    usage();
+	case 'V':
+	    puts(RELEASE);
+	    return EXIT_SUCCESS;
 	}
 
     for (j = 0, val_frac = 1.0; j < len_frac; j++)

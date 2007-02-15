@@ -7,10 +7,12 @@ Usage:
 
 Options:
 
+	-h		print the usage message
 	-p num		Sets precision (number of digits after the decimal
 			place).
 	-i interval	Sets compounding interval for interest computation.
 	-o script	Specify file in which to save output transcript.
+	-V		print the version
 
 	An output transcript may be saved and reloaded for further editing. 
 	Scripts are loaded from left to right (with the "output" processed

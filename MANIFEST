@@ -1,4 +1,4 @@
-MANIFEST for add, version t20021229
+MANIFEST for add, version t20070214
 --------------------------------------------------------------------------------
 MANIFEST                        this file
 CHANGES                         summary of changes to 'add'
@@ -15,7 +15,7 @@ config_h.in                     template for config.h
 configure                       configure script
 configure.in                    configure-script template
 curses.c                        curses-interface for 'add'
-install.sh                      install script, from X11R5
+install-sh                      generic install-script
 makefile.in                     makefile-template for 'add'
 mkdirs.sh                       make directory-hierarchy, from X windows
 screen.h                        interface to $(SCREEN).c
@@ -61,3 +61,5 @@ testing/case14.add              input-script for test-case14
 testing/case14.opt              command-line options for test-case14
 testing/case14.ref              reference-output for test-case14
 testing/run_test.sh             regress-script for 'add'
+testing/showCC                  wrapper for atac
+testing/testCC                  wrapper for atac

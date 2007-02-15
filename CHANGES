@@ -1,4 +1,12 @@
-$Id: CHANGES,v 1.8 2002/12/29 20:21:12 tom Exp $
+$Id: CHANGES,v 1.10 2007/02/15 00:49:31 tom Exp $
+
+2007/02/14
+----------
+	Update configure script.
+
+	Add -V (version) option (requested by Reuben Thomas).
+
+	Change license to MIT-style (requested by Reuben Thomas).
 
 2002/12/29
 ----------

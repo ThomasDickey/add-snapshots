@@ -1,8 +1,8 @@
-# $Id: makefile.in,v 1.11 2002/12/29 21:01:27 tom Exp $
+# $Id: makefile.in,v 1.14 2007/02/15 00:22:52 tom Exp $
 # Makefile-template for 'add'
 
 THIS = add
-RELEASE = t20021229
+RELEASE = t20070214
 SCREEN = curses
 
 #### Start of system configuration section. ####
@@ -37,15 +37,7 @@ SHELL		= /bin/sh
 .c.o:
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $<
 
-SRC =	CHANGES COPYING README \
-	$(THIS).c $(THIS).h $(THIS).1 \
-	curses.c \
-	config_h.in install.sh mkdirs.sh makefile.in configure.in \
-	config.guess, config.sub
-
 OBJ = $(THIS).o $(SCREEN).o
-
-DISTFILES = MANIFEST configure $(SRC)
 
 PROG	= $(THIS)$x
 
