@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-static const char Id[] = "$Id: curses.c,v 1.13 2007/02/15 00:24:40 tom Exp $";
+static const char Id[] = "$Id: curses.c,v 1.15 2010/07/08 10:44:09 tom Exp $";
 
 /*
  * Title:	curses.c
@@ -281,9 +281,11 @@ screen_delete_char(void)
 void
 screen_finish(void)
 {
-    nl();			/* does no harm, some curses don't do it */
-    endwin();
-    screen_active = FALSE;	/* flag showing that curses is off */
+    if (screen_active) {
+	nl();			/* does no harm, some curses don't do it */
+	endwin();
+	screen_active = FALSE;	/* flag showing that curses is off */
+    }
 }
 
 /*
@@ -322,7 +324,7 @@ screen_getc(void)
 void
 screen_insert_char(int c)
 {
-    insch(c);
+    insch((unsigned char) c);
 }
 
 /*
@@ -395,7 +397,7 @@ screen_printf(const char *format,...)
 void
 screen_putc(int c)
 {
-    addch(c);
+    addch((unsigned char) c);
 }
 
 void

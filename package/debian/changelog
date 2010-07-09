@@ -1,0 +1,5 @@
+add (20100708) unstable; urgency=low
+
+  * Add package scripts to upstream source, for test-builds.
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Wed, 07 Jul 2010 17:08:46 -0400
