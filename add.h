@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-/* $Id: add.h,v 1.11 2007/02/15 00:36:47 tom Exp $
+/* $Id: add.h,v 1.12 2010/07/08 10:45:33 tom Exp $
  *
  * common definitions for 'add' utility
  */
@@ -104,6 +104,7 @@
 #endif
 
 #include	<stdio.h>
+#include	<assert.h>
 #include	<ctype.h>
 #include	<errno.h>
 #include	<string.h>

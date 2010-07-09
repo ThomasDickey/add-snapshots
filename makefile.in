@@ -1,14 +1,29 @@
-# $Id: makefile.in,v 1.14 2007/02/15 00:22:52 tom Exp $
+# $Id: makefile.in,v 1.22 2010/07/08 23:13:16 tom Exp $
 # Makefile-template for 'add'
 
-THIS = add
-RELEASE = t20070214
-SCREEN = curses
+THIS		= add
+RELEASE		= t20100708
+SCREEN		= curses
 
 #### Start of system configuration section. ####
 
-srcdir = @srcdir@
-VPATH  = @srcdir@
+srcdir		= @srcdir@
+VPATH		= @srcdir@
+
+transform	= @program_transform_name@
+ACTUAL		= `echo $(THIS)|sed '$(transform)'`
+
+prefix		= @prefix@
+exec_prefix	= @exec_prefix@
+
+bindir		= @bindir@
+datadir		= @datadir@
+mandir		= @mandir@
+manext		= 1
+
+BINDIR		= $(DESTDIR)$(bindir)
+DATADIR		= $(DESTDIR)$(datadir)
+MANDIR		= $(DESTDIR)$(mandir)/man$(manext)
 
 CC		= @CC@
 LINK		= $(CC)
@@ -16,17 +31,14 @@ INSTALL		= @INSTALL@
 INSTALL_PROGRAM	= @INSTALL_PROGRAM@
 INSTALL_DATA	= @INSTALL_DATA@
 
+CTAGS		= @CTAGS@
+ETAGS		= @ETAGS@
+LINT		= @LINT@
+
 LIBS		= @LIBS@
-CPPFLAGS	= @CPPFLAGS@ -DHAVE_CONFIG_H -DRELEASE=\"$(RELEASE)\" -I. -I$(srcdir)
+CPPFLAGS	= @CPPFLAGS@ -DHAVE_CONFIG_H -DRELEASE=\"$(RELEASE)\" -DADD_HELPFILE=\"$(datadir)/$(ACTUAL).hlp\" -I. -I$(srcdir)
 CFLAGS		= @CFLAGS@ @EXTRA_CFLAGS@
 LDFLAGS		= @LDFLAGS@
-
-prefix		= @prefix@
-exec_prefix	= @exec_prefix@
-
-bindir		= $(DESTDIR)@bindir@
-mandir		= $(DESTDIR)@mandir@/man1
-manext		= 1
 
 x		= @PROG_EXT@
 
@@ -48,18 +60,20 @@ $(PROG): $(OBJ)
 
 $(OBJ): $(THIS).h screen.h
 
-install: all installdirs
-	$(INSTALL_PROGRAM) $(PROG) $(bindir)/$(PROG)
-	$(INSTALL_PROGRAM) $(THIS).hlp $(bindir)/$(THIS).hlp
-	$(INSTALL_DATA) $(srcdir)/$(THIS).1 $(mandir)/$(THIS).$(manext)
+DIRS = $(BINDIR) $(DATADIR) $(MANDIR)
 
-installdirs:
-	$(SHELL) ${srcdir}/mkdirs.sh $(bindir) $(mandir)
+install: $(PROG) $(DIRS)
+	$(INSTALL_PROGRAM) $(PROG) $(BINDIR)/$(ACTUAL)$x
+	$(SHELL) $(srcdir)/rename.sh $(srcdir)/$(THIS).hlp $(ACTUAL) $(DATADIR)/$(ACTUAL).hlp $(INSTALL_PROGRAM)
+	$(SHELL) $(srcdir)/rename.sh $(srcdir)/$(THIS).1   $(ACTUAL) $(MANDIR)/$(ACTUAL).$(manext) $(INSTALL_DATA) 
+
+$(DIRS):
+	mkdir -p $@
 
 uninstall:
-	rm -f $(bindir)/$(PROG)
-	rm -f $(bindir)/$(THIS).hlp
-	rm -f $(mandir)/$(THIS).$(manext)
+	rm -f $(BINDIR)/$(ACTUAL)$x
+	rm -f $(DATADIR)/$(ACTUAL).hlp
+	rm -f $(MANDIR)/$(ACTUAL).$(manext)
 
 mostlyclean:
 	rm -f *.o core *~ *.BAK *.trace *.atac
@@ -69,15 +83,19 @@ clean: mostlyclean
 
 distclean: clean
 	rm -f makefile config.log config.cache config.status config.h
+	rm -f tags TAGS
 
 realclean: distclean
-	rm -f tags TAGS # don't remove configure!
+	@-
 
 tags:
-	ctags $(THIS).c $(HDRS)
+	$(CTAGS) $(THIS).c $(SCREEN).c $(HDRS)
 
-TAGS:
-	etags $(THIS).c $(HDRS)
+@MAKE_UPPER_TAGS@TAGS:
+@MAKE_UPPER_TAGS@	$(ETAGS) $(THIS).c $(SCREEN).c $(HDRS)
+
+lint:
+	$(LINT) $(LINTOPTS) $(CPPFLAGS) $(THIS).c $(SCREEN).c
 
 # I keep my sources in RCS, and assign a symbolic release to the current patch
 # level.  The 'manifest' script knows how to build a list of files for a given

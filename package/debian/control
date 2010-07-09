@@ -1,0 +1,22 @@
+Source: add
+Maintainer: Thomas E. Dickey <dickey@invisible-island.net>
+Section: devel
+Priority: extra
+Standards-Version: 3.8.4
+Build-Depends: debhelper (>= 5)
+Homepage: http://invisible-island.net/add/
+
+Package: add
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: add - full-screen editing calculator
+ Add  performs  fixed-point  computation.   It  is designed for use as a
+ checkbook or expense-account balancing tool.
+ .
+ Add maintains a running result for each operation.  You may  scroll  to
+ any position in the expression list and modify the list.  Enter data by
+ typing numbers (with optional decimal point), separated by operators.
+ .
+ An output transcript may be saved and  reloaded  for  further  editing.
+ Scripts  are  loaded  from  left  to right (with the "output" processed
+ first).

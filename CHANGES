@@ -1,67 +1,94 @@
-$Id: CHANGES,v 1.10 2007/02/15 00:49:31 tom Exp $
+$Id: CHANGES,v 1.20 2010/07/08 21:10:21 tom Exp $
+
+2010/07/08
+----------
+	+ modify test-script to allow for 64-bit values.
+
+	+ add configure checks for ctags, etags and lint.
+
+	+ add configure checks for ncurses5-config, etc.
+
+	+ modify makefile.in to install help-file in data-directory.
+
+	+ modify lookup of help-file to check if ADD_HELPFILE is defined using
+	  an absolute pathname.  If not, it will still look in the directory
+	  where the program is located.
+	+ add 
+
+	+ add configure --program-prefix, etc., to allow renaming executable,
+	  as done in Debian package to "tapecalc".
+
+	+ change --with-no-leaks to --disable-leaks, for consistency.
+
+	+ drop mkdirs.sh, use "mkdir -p"
+
+	+ updated configure script.
+
+	+ update config.guess, config.sub
 
 2007/02/14
 ----------
-	Update configure script.
+	+ updated configure script.
 
-	Add -V (version) option (requested by Reuben Thomas).
+	+ add -V (version) option (requested by Reuben Thomas).
 
-	Change license to MIT-style (requested by Reuben Thomas).
+	+ change license to MIT-style (requested by Reuben Thomas).
 
 2002/12/29
 ----------
-	Add '~' and related commands for negating a result.
+	+ add '~' and related commands for negating a result.
 
-	Add :f command to show the name of the script which is being edited.
-	Control/G also shows the name.
+	+ add :f command to show the name of the script which is being edited.
+	  Control/G also shows the name.
 
-	Add control/N and control/P for aliases of j, k cursor movement.
+	+ add control/N and control/P for aliases of j, k cursor movement.
 
-	If a comment was changed, mark the script as changed.
+	+ if a comment was changed, mark the script as changed.
 
-	Update configure script to use comparable macros for finding ncurses,
-	etc., vs other my programs.
+	+ update configure script to use comparable macros for finding ncurses,
+	  etc., vs other my programs.
 
-	Indent'd.
+	+ indent'd.
 
 1998/08/18
 ----------
-	Look for trace() function in ncurses rather than _tracef().
+	+ look for trace() function in ncurses rather than _tracef().
 
 970526
-	Add configure-test for COLOR_PAIR, and check for gpm library upon
+	+ add configure-test for COLOR_PAIR, and check for gpm library upon
 	which ncurses may depend.
 
 960428
-	Use scrolling regions if curses supports them.
+	+ Use scrolling regions if curses supports them.
 
-	Fix to ensure colon-command message stays up til next keystroke.
+	+ Fix to ensure colon-command message stays up til next keystroke.
 
 v1_0 release: 1995/12/26
 ------------
 
 951226
-	Testing with 'atac' (allow scripts to be nested, and comments to be
-	wider than screen).
+	+ testing with 'atac' (allow scripts to be nested, and comments to be
+	  wider than screen).
 
 951210
-	Fix memory leaks.  Added 'autoconf' script.
+	+ fix memory leaks.  Added 'autoconf' script.
 
 941121
-	integration with 'ncurses' 1.8.6
+	+ integration with 'ncurses' 1.8.6
 
-931024	revised to work with PD Curses 2.1 and Turbo C/C++ 3.0,
-	and builtin help-screen.
+931024
+	+ revised to work with PD Curses 2.1 and Turbo C/C++ 3.0,
+	  and builtin help-screen.
 
 870421
-	Added online help.
+	+ added online help.
 
 860610
-	Added '(' and ')' operators.  Added '-i' option. Added A,S,M,D,I,T
-	toggles.
+	+ added '(' and ')' operators.  Added '-i' option. Added A,S,M,D,I,T
+	  toggles.
 
 860605
-	Added script support, and "repeat" operations (e.g., a,s,m,d,i,t).
+	+ added script support, and "repeat" operations (e.g., a,s,m,d,i,t).
 
 860507
-	initial version, on NCR Tower.
+	+ initial version, on NCR Tower.

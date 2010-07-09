@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: run_test.sh,v 1.8 1995/12/27 00:37:35 tom Exp $
+# $Id: run_test.sh,v 1.10 2010/07/08 21:07:57 tom Exp $
 # regression script for 'add'
 if test $# = 0
 then
@@ -9,6 +9,8 @@ fi
 #
 PATH=`cd ..;pwd`:$PATH; export PATH
 #
+CASE64=`file ../add 2>/dev/null | fgrep 64-bit`
+#
 LINES=24;export LINES
 COLS=80;export COLS
 rm -f un*ble
@@ -17,6 +19,7 @@ chmod 444 unwritable
 chmod 000 unreadable
 trap "rm -f un*ble" 0 1 2 5 15
 #
+EXIT=0
 for i in $*
 do
 	I=`basename $i .add`
@@ -26,6 +29,10 @@ do
 	REF="$I.ref"
 	TMP="$I.tmp"
 	OPT=""
+	if test -n "$CASE64"
+	then
+		test -f "$I-64.ref" && REF="$I-64.ref"
+	fi
 	if test -f $I.opt
 	then
 		OPT=`cat $I.opt`
@@ -66,8 +73,8 @@ do
 				rm -f $OUT
 			else
 				echo '?? fail: '$I
-				diff $OUT $REF
-				exit 1
+				diff $REF $OUT 
+				EXIT=1
 			fi
 		else
 			echo '...saving '$REF
@@ -78,3 +85,4 @@ do
 		exit 1
 	fi
 done
+exit $EXIT

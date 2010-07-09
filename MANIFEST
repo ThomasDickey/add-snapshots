@@ -1,4 +1,4 @@
-MANIFEST for add, version t20070214
+MANIFEST for add, version t20100708
 --------------------------------------------------------------------------------
 MANIFEST                        this file
 CHANGES                         summary of changes to 'add'
@@ -17,8 +17,21 @@ configure.in                    configure-script template
 curses.c                        curses-interface for 'add'
 install-sh                      generic install-script
 makefile.in                     makefile-template for 'add'
-mkdirs.sh                       make directory-hierarchy, from X windows
+rename.sh                       helper-script for renaming
 screen.h                        interface to $(SCREEN).c
+package                         subdirectory
+package/add.spec                build-script for add
+package/debian                  subdirectory
+package/debian/changelog        debian build script
+package/debian/compat           debian build script
+package/debian/control          debian build script
+package/debian/copyright        debian build script
+package/debian/docs             debian build script
+package/debian/rules            debian build script
+package/debian/source           subdirectory
+package/debian/source/format    debian build script
+package/debian                  subdirectory
+package/debian/watch            debian build script
 porting                         subdirectory
 porting/descrip.mms             VMS build-script for "add"
 porting/vms_link.opt            VMS link-options for "add"
@@ -29,6 +42,7 @@ testing/case00.opt              command-line options for test-case00
 testing/case00.ref              reference-output for test-case00
 testing/case01.add              input-script for test-case01
 testing/case01.ref              reference-output for test-case01
+testing/case02-64.ref           reference for case02 with 64-bits
 testing/case02.add              input-script for test-case02
 testing/case02.ref              reference-output for test-case02
 testing/case03.add              input-script for test-case03
@@ -38,6 +52,7 @@ testing/case04.opt              command-line options for test-case04
 testing/case04.ref              reference-output for test-case04
 testing/case05.add              input-script for test-case05
 testing/case05.ref              reference-output for test-case05
+testing/case06-64.ref           reference for case06 with 64-bits
 testing/case06.add              input-script for test-case06
 testing/case06.ref              reference-output for test-case06
 testing/case07.add              input-script for test-case07
@@ -54,6 +69,7 @@ testing/case11.opt              command-line options for test-case11
 testing/case11.ref              reference-output for test-case11
 testing/case12.add              input-script for test-case12
 testing/case12.ref              reference-output for test-case12
+testing/case13-64.ref           reference for case13 with 64-bits
 testing/case13.add              input-script for test-case13
 testing/case13.opt              command-line options for test-case13
 testing/case13.ref              reference-output for test-case13

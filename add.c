@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1994-2002,2007 by Thomas E. Dickey                               *
+ * Copyright 1994-2007,2010 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,8 +19,8 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-static const char Id[] = "$Id: add.c,v 1.40 2007/02/15 00:47:32 tom Exp $";
-static const char copyrite[] = "Copyright 1994-2002,2007 by Thomas E. Dickey";
+static const char Id[] = "$Id: add.c,v 1.46 2010/07/08 21:12:58 tom Exp $";
+static const char copyrite[] = "Copyright 1994-2007,2010 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -53,7 +53,7 @@ static void ShowFrom(DATA *);
 /*
  * Common data
  */
-static char *top_output;
+static const char *top_output;
 static DATA *all_data;		/* => beginning of data */
 static DATA *top_data;		/* => beginning of current screen */
 
@@ -92,7 +92,7 @@ static struct {
     char repeats;
     char toggles;
     Bool isunary;
-    char *explain;
+    const char *explain;
 } Commands[] = {
     CMD(OP_ADD,  'a',	'A',	TRUE,	"add"),
     CMD(OP_SUB,  's',	'S',	TRUE,	"subtract"),
@@ -105,6 +105,14 @@ static struct {
     CMD(R_PAREN, EOS,	EOS,    FALSE,	"end group")
 };
 /* *INDENT-ON* */
+
+static void
+failed(const char *msg)
+{
+    screen_finish();
+    perror(msg);
+    exit(EXIT_FAILURE);
+}
 
 /*
  * Normally we don't show the results of replaying a script. This makes
@@ -140,7 +148,7 @@ LOOKUP(isUnary, command, Commands[j].isunary)
      static
      DATA *EndOfData(void)
 {
-    register DATA *np;
+    DATA *np;
     if ((np = all_data) != 0) {
 	while (!LastData(np))
 	    np = np->next;
@@ -175,7 +183,7 @@ UnaryConflict(DATA * np, int chr)
 static void
 TrimString(char *src)
 {
-    register char *end = src + strlen(src);
+    char *end = src + strlen(src);
 
     while (end-- != src) {
 	if (isspace(UCH(*end)))
@@ -189,9 +197,9 @@ TrimString(char *src)
  * Allocate a string, trimming whitespace from the end for consistency.
  */
 static char *
-AllocString(char *src)
+AllocString(const char *src)
 {
-    return strcpy(malloc((unsigned) (strlen(src) + 1)), src);
+    return strcpy(malloc((strlen(src) + 1)), src);
 }
 
 /*
@@ -200,7 +208,12 @@ AllocString(char *src)
 static DATA *
 AllocData(DATA * after)
 {
-    register DATA *np = SALLOC(DATA);
+    DATA *np = SALLOC(DATA);
+
+    if (np == 0)
+	failed("AllocData");
+
+    assert(np != 0);
 
     np->txt = 0;
     np->val =
@@ -219,7 +232,7 @@ AllocData(DATA * after)
 	if (!LastData(np))
 	    np->next->prev = np;
     } else {			/* append to the end of the list */
-	register DATA *op = EndOfData();
+	DATA *op = EndOfData();
 	if (op != 0) {
 	    op->next = np;
 	    np->prev = op;
@@ -237,8 +250,8 @@ AllocData(DATA * after)
 static DATA *
 FreeData(DATA * np, int permanent)
 {
-    register DATA *prev = np->prev;
-    register DATA *next = np->next;
+    DATA *prev = np->prev;
+    DATA *next = np->next;
 
     if (prev == 0) {		/* we're at the beginning of the list */
 	all_data = next;
@@ -275,7 +288,7 @@ FreeData(DATA * np, int permanent)
 static int
 CountData(DATA * np)
 {
-    register int seq = 0;
+    int seq = 0;
     while (np->prev != 0) {
 	seq++;
 	np = np->prev;
@@ -298,7 +311,7 @@ CountAllData(void)
 static DATA *
 FindData(int seq)
 {
-    register DATA *np = all_data;
+    DATA *np = all_data;
     while (seq-- > 0) {
 	if (np == 0)
 	    break;
@@ -314,12 +327,12 @@ static Value
 Floor(Value val)
 {
     if (val > big_long) {
-	val = big_long;
+	val = (Value) big_long;
     } else if (val < -big_long) {
-	val = -big_long;
+	val = (Value) (-big_long);
     } else {
-	long tmp = val;
-	val = tmp;
+	long tmp = (long) val;
+	val = (Value) tmp;
     }
     return (val);
 }
@@ -341,7 +354,7 @@ Ceiling(Value val)
  * Return the last operand for the given operator, excluding the given data.
  */
 static Value
-LastVAL(DATA * np, int cmd)
+LastVAL(const DATA * np, int cmd)
 {
     np = np->prev;
     while (np != 0) {
@@ -376,14 +389,14 @@ Format(char *dst, Value val)
 	(void) strcpy(s, " ** overflow");
     } else {
 	(void) sprintf(bfr, "%0*.0f", len_frac, val);
-	len = strlen(bfr) - len_frac;
-	grp = len % 3;
+	len = (int) strlen(bfr) - len_frac;
+	grp = (size_t) (len % 3);
 	j = 0;
 
 	while (j < len) {
 	    if (grp) {
 		(void) strncpy(s, &bfr[j], grp);
-		j += grp;
+		j += (int) grp;
 		s += grp;
 		if (j < len)
 		    *s++ = COMMA;
@@ -411,7 +424,7 @@ putval(Value val)
 static void
 setval(DATA * np, int cmd, Value val, int psh)
 {
-    np->cmd = isCommand(cmd) ? cmd : OP_ADD;
+    np->cmd = (char) (isCommand(cmd) ? cmd : OP_ADD);
     np->val = val;
     np->psh = psh;
 }
@@ -421,10 +434,10 @@ setval(DATA * np, int cmd, Value val, int psh)
  * number.
  */
 static int
-LevelOf(DATA * target)
+LevelOf(const DATA * target)
 {
-    register DATA *np;
-    register int level = 0;
+    DATA *np;
+    int level = 0;
 
     for (np = all_data; np != target; np = np->next) {
 	if (np->cmd == R_PAREN)
@@ -441,8 +454,8 @@ LevelOf(DATA * target)
 static DATA *
 ScreenBottom(void)
 {
-    register DATA *np = top_data;
-    register int count = screen_full;
+    DATA *np = top_data;
+    int count = screen_full;
 
     while (--count > 0) {
 	if (!LastData(np))
@@ -471,7 +484,7 @@ ShowValue(DATA * np, int *editing, Bool comment)
 		editing[1] = 0;
 	}
     } else if (row >= 0 && row < screen_full) {
-	char cmd = isprint(UCH(np->cmd)) ? np->cmd : '?';
+	char cmd = (char) (isprint(UCH(np->cmd)) ? np->cmd : '?');
 
 	screen_set_position(row + 1, col);
 	screen_clear_endline();
@@ -537,7 +550,7 @@ ShowValue(DATA * np, int *editing, Bool comment)
 static void
 ShowRange(DATA * first, DATA * last)
 {
-    register DATA *np = first;
+    DATA *np = first;
     while (np != last) {
 	if (ShowValue(np, (int *) 0, FALSE) >= screen_full)
 	    break;
@@ -608,7 +621,7 @@ ShowStatus(DATA * np, int opened)
  * Show text in the status line
  */
 static void
-ShowInfo(char *msg)
+ShowInfo(const char *msg)
 {
     if (screen_active) {	/* we've started curses */
 	screen_message("%s", msg);
@@ -621,7 +634,7 @@ ShowInfo(char *msg)
  * Show an error-message in the status line
  */
 static void
-ShowError(char *msg, char *arg)
+ShowError(const char *msg, const char *arg)
 {
     static const char format[] = "?? %s \"%s\"";
 
@@ -631,8 +644,7 @@ ShowError(char *msg, char *arg)
     } else {
 	(void) fprintf(stderr, format, msg, arg);
 	(void) fprintf(stderr, "\n");
-	perror("add");
-	exit(errno);
+	failed("add");
     }
 }
 
@@ -640,7 +652,7 @@ ShowError(char *msg, char *arg)
  * Returns true if a file exists, -true if it isn't a file, false if neither.
  */
 static int
-Fexists(char *path)
+Fexists(const char *path)
 {
     struct stat sb;
     if (*path == EOS)
@@ -658,7 +670,7 @@ Fexists(char *path)
  * Check file-access for writing a script
  */
 static int
-Ok2Write(char *path)
+Ok2Write(const char *path)
 {
     if (Fexists(path) != -TRUE
 	&& access(path, 02) != 0
@@ -674,7 +686,7 @@ Ok2Write(char *path)
  * Write the current list of data as an ADD-script
  */
 static void
-PutScript(char *path)
+PutScript(const char *path)
 {
     DATA *np;
     FILE *fp = (path && *path) ? fopen(path, "w") : 0;
@@ -723,7 +735,7 @@ PutScript(char *path)
  * Check file-access for reading a script.
  */
 static int
-Ok2Read(char *path)
+Ok2Read(const char *path)
 {
     if (Fexists(path) != TRUE || access(path, 04) != 0)
 	ShowError("No read access", path);
@@ -736,9 +748,15 @@ Ok2Read(char *path)
  * Save the current script-state and nest a new one.
  */
 static void
-PushScripts(char *script)
+PushScripts(const char *script)
 {
     SSTACK *p = SALLOC(SSTACK);
+
+    if (p == 0)
+	failed("PushScripts");
+
+    assert(p != 0);
+
     p->next = sstack;
     p->sfp = scriptFP;
     p->sscripts = scriptv;
@@ -816,7 +834,7 @@ GetScript(void)
     static int first;
     static int ignored;
     static int comment;
-    register int c;
+    int c;
 
     while (scriptv != 0 && *scriptv != 0) {
 	int was_invisible = !isVisible();
@@ -885,7 +903,7 @@ GetScript(void)
 static int
 GetC(void)
 {
-    register int c;
+    int c;
 
     if ((c = GetScript()) == EOS) {
 	show_error = FALSE;
@@ -902,7 +920,7 @@ static int
 DeleteChar(char *buffer, int offset, int pos, int limit)
 {
     int y, x, col;
-    register char *t;
+    char *t;
 
     /* delete from the actual buffer */
     for (t = buffer + offset; (t[0] = t[1]) != EOS; t++) ;
@@ -936,8 +954,8 @@ static int
 InsertChar(char *buffer, int chr, int pos, int lmargin, int rmargin, int *offset)
 {
     int y, x;
-    int len = strlen(buffer);
-    register char *t;
+    int len = (int) strlen(buffer);
+    char *t;
 
     /* perform the actual insertion into the buffer */
     for (t = buffer + len;; t--) {
@@ -945,7 +963,7 @@ InsertChar(char *buffer, int chr, int pos, int lmargin, int rmargin, int *offset
 	if (t == buffer + pos)
 	    break;
     }
-    t[0] = chr;
+    t[0] = (char) chr;
 
     if (isVisible()) {		/* update the display on the screen */
 	y = screen_row();
@@ -994,7 +1012,7 @@ doDeleteChar(char *buffer, int col, int limit)
 static int
 DecimalPoint(char *buffer)
 {
-    register char *dot = strchr(buffer, PERIOD);
+    char *dot = strchr(buffer, PERIOD);
 
     if (dot != 0)
 	return (int) (dot - buffer);
@@ -1044,7 +1062,7 @@ static void
 EditBuffer(char *buffer, int length)
 {
     int end, chr;
-    int col = strlen(buffer);
+    int col = (int) strlen(buffer);
     int done = FALSE;
     int offset = 0;
     int lmargin = screen_col();
@@ -1053,7 +1071,7 @@ EditBuffer(char *buffer, int length)
     end = screen_cols_left(lmargin);
     end = min(end, length);
     if (end < (int) strlen(buffer))
-	offset = strlen(buffer) - end;
+	offset = (int) strlen(buffer) - end;
     while (!done) {
 	while (col - offset < 0) {
 	    offset--;
@@ -1186,21 +1204,22 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	    buffer[0] = L_PAREN;
 	    buffer[1] = EOS;
 	} else {
-	    register int len, dot;
-	    register char *s;
+	    int len, dot;
+	    char *s;
 
 	    (void) sprintf(buffer, "%0*.0f", len_frac, np->val);
-	    len = strlen(buffer);
+	    len = (int) strlen(buffer);
 	    s = buffer + len;
 	    s[1] = EOS;
 	    for (c = 0; c < len_frac; c++, s--)
 		s[0] = s[-1];
 	    dot = len - len_frac;
-	    len++;
 	    buffer[dot] = PERIOD;
 	}
 	if (isVisible()) {
-	    screen_set_position(row, (int) (editcols[0] + val_width - strlen(buffer)));
+	    screen_set_position(row, (int) (editcols[0]
+					    + val_width
+					    - (int) strlen(buffer)));
 	    screen_puts(buffer);
 	}
     } else {
@@ -1209,7 +1228,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 
     if (isVisible())
 	screen_set_position(row, editcols[0] + val_width);
-    col = strlen(buffer);
+    col = (int) strlen(buffer);
     nesting = (*buffer == L_PAREN);
     c = EOS;
 
@@ -1279,7 +1298,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 		screen_alarm();
 	    else {
 		if (isDigit(c) || c == PERIOD) {
-		    old_digit = c;
+		    old_digit = (char) c;
 		    c = OP_ADD;
 		}
 		*len_ = -1;
@@ -1304,7 +1323,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 * get another, simply move it to the new position.
 	 */
 	else if (c == PERIOD) {
-	    register int dot;
+	    int dot;
 	    if ((dot = DecimalPoint(buffer)) >= 0)
 		col = DeleteChar(buffer, dot, col, val_width);
 	    col = InsertChar(buffer, c, col, lmargin, val_width, (int *) 0);
@@ -1316,8 +1335,8 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 */
 	else if (c != COMMA) {
 	    if (*buffer != EOS) {
-		register int len = strlen(buffer);
-		register int dot;
+		int len = (char) strlen(buffer);
+		int dot;
 		Value cents;
 
 		if ((dot = DecimalPoint(buffer)) < 0)
@@ -1338,7 +1357,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	    } else {
 		*val_ = np->val;
 	    }
-	    *len_ = (*buffer == L_PAREN) ? 0 : strlen(buffer);
+	    *len_ = (*buffer == L_PAREN) ? 0 : (char) strlen(buffer);
 	    done = TRUE;
 	}
     }
@@ -1386,9 +1405,9 @@ Calculate(DATA * np, DATA * old)
     case OP_DIV:
 	if (np->val == 0.0) {
 	    if (np->sum > 0.0)
-		np->sum = big_long;
+		np->sum = (Value) big_long;
 	    else if (np->sum < 0.0)
-		np->sum = -big_long;
+		np->sum = (Value) (-big_long);
 	} else {
 	    np->sum /= (np->val / val_frac);
 	    np->sum = Floor(np->sum);
@@ -1421,8 +1440,8 @@ Calculate(DATA * np, DATA * old)
 static void
 Recompute(DATA * base)
 {
-    register DATA *np = base;
-    register DATA *op;
+    DATA *np = base;
+    DATA *op;
     int level = LevelOf(np);
     Bool same;
 
@@ -1565,7 +1584,7 @@ ScrollBy(DATA * np, int amount)
 {
     int last_seq = CountAllData();
     int this_seq = CountData(np);
-    int next_seq = this_seq;
+    int next_seq;
     int top = CountData(top_data);
 
     if (amount > 0) {
@@ -1652,7 +1671,7 @@ ColonCommand(DATA * np)
     DATA *prior_np = np;
     char buffer[BUFSIZ];
     char *reply;
-    static char *last_write = "";
+    static const char *last_write = "";
 
     if (CountFromTop(np) >= screen_full - 1) {
 	top_data = top_data->next;
@@ -1676,7 +1695,7 @@ ColonCommand(DATA * np)
 	    int seq = (int) strtol(reply, &dst, 0);
 	    np = JumpTo(np, seq);
 	} else {
-	    char *param = reply + 1;
+	    const char *param = reply + 1;
 	    while (isspace(UCH(*param)))
 		param++;
 	    switch (*reply) {
@@ -1746,7 +1765,7 @@ ScreenMovement(DATA ** pp, int chr)
 	if (isReturn(chr)) {
 	    top_data = np;
 	} else {
-	    int top = CountData(top_data);
+	    int top;
 	    int seq = CountData(np);
 	    if (chr == '-') {	/* use current entry as end */
 		top = seq - screen_full + 1;
@@ -1808,7 +1827,7 @@ ShowHelp(void)
     FILE *fp;
     DATA *save_data = all_data;
     DATA *save_top = top_data;
-    DATA *np;
+    DATA *np = 0;
     int chr;
     int end;
     int done = FALSE;
@@ -1817,6 +1836,9 @@ ShowHelp(void)
     if ((all_data = all_help) == 0) {
 
 	np = AllocData((DATA *) 0);	/* header line not shown */
+
+	assert(all_data != 0);
+
 	if ((fp = fopen(helpfile, "r")) != 0) {
 	    while (fgets(buffer, sizeof(buffer), fp) != 0) {
 		np = AllocData(np);
@@ -1825,7 +1847,8 @@ ShowHelp(void)
 	    (void) fclose(fp);
 	} else {
 	    np = AllocData(np);
-	    np->txt = "Could not find help-file.  Press 'q' to exit.";
+	    np->txt =
+		AllocString("Could not find help-file.  Press 'q' to exit.");
 	}
     }
 
@@ -1867,7 +1890,7 @@ ShowHelp(void)
 # endif
 
 static int
-AbsolutePath(char *path)
+AbsolutePath(const char *path)
 {
 #if	!defined(unix) && !defined(vms)		/* assume MSDOS */
     if (isalpha(UCH(*path)) && path[1] == ':')
@@ -1882,12 +1905,16 @@ AbsolutePath(char *path)
 static char *
 PathLeaf(char *path)
 {
-    register int n;
-    for (n = strlen(path); n > 0; n--)
+    int n;
+    for (n = (int) strlen(path); n > 0; n--)
 	if (isSlash(path[n - 1]))
 	    break;
     return path + n;
 }
+#endif
+
+#ifndef ADD_HELPFILE
+#define ADD_HELPFILE "add.hlp"
 #endif
 
 /*
@@ -1896,22 +1923,31 @@ PathLeaf(char *path)
  * PATH environment variable.
  */
 static void
-FindHelp(char *program)
+FindHelp(const char *program)
 {
-#ifdef ADD_HELPFILE
-    helpfile = ADD_HELPFILE;
-#else
     char temp[BUFSIZ];
-    register char *s = strcpy(temp, program);
+    const char *tail = ADD_HELPFILE;
+    char *s = strcpy(temp, program);
+
 # if SYS_VMS
-    for (s += strlen(temp); s != temp; s--)
-	if (s[-1] == ']' || s[-1] == ':')
-	    break;
+    if (strcspn(tail, "[]:") != strlen(tail)) {
+	strcpy(temp, tail);
+	s = temp + strlen(temp);
+	tail = "";
+    } else {
+	for (s += strlen(temp); s != temp; s--)
+	    if (s[-1] == ']' || s[-1] == ':')
+		break;
+    }
 # else				/* assume UNIX or MSDOS */
-    if (AbsolutePath(temp)) {
+    if (AbsolutePath(tail)) {
+	strcpy(temp, tail);
+	s = temp + strlen(temp);
+	tail = "";
+    } else if (AbsolutePath(temp)) {
 	s = PathLeaf(temp);
     } else {
-	char *path = getenv("PATH");
+	const char *path = getenv("PATH");
 	int j = 0, k, l;
 	if (path == 0)
 	    path = "";
@@ -1935,9 +1971,8 @@ FindHelp(char *program)
 	}
     }
 # endif				/* VMS/UNIX/MSDOS */
-    (void) strcpy(s, "add.hlp");
+    (void) strcpy(s, tail);
     helpfile = AllocString(temp);
-#endif /* ADD_HELPFILE */
 }
 
 /*
@@ -2014,10 +2049,10 @@ Loop(void)
 		setval(np, np->cmd, val, (len == -1));
 		if (LastData(np) && isCommand(chr)) {
 		    (void) AllocData(np);
-		    np->next->cmd = chr;
+		    np->next->cmd = (char) chr;
 		} else if (LastData(np) && isRepeats(chr)) {
 		    (void) AllocData(np);
-		    np->next->cmd = isRepeats(chr);
+		    np->next->cmd = (char) isRepeats(chr);
 		}
 		Recompute(np);
 	    } else {
@@ -2051,7 +2086,7 @@ Loop(void)
 		}
 		if (isCommand(chr)) {
 		    np = JumpBy(np, 1);
-		    np->cmd = chr;
+		    np->cmd = (char) chr;
 		} else if (chr == EQUALS) {
 		    Recompute(np);
 		} else {
@@ -2122,7 +2157,6 @@ main(int argc, char **argv)
     int max_digits;		/* maximum length of a number */
     int changed;
     char tmp;
-    Bool o_option = FALSE;
 
     (void) signal(SIGFPE, SIG_IGN);
     len_frac = 2;
@@ -2165,7 +2199,6 @@ main(int argc, char **argv)
 	    }
 	    break;
 	case 'o':
-	    o_option = TRUE;
 	    top_output = optarg;
 	    break;
 	case 'h':
