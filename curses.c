@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-static const char Id[] = "$Id: curses.c,v 1.15 2010/07/08 10:44:09 tom Exp $";
+static const char Id[] = "$Id: curses.c,v 1.16 2010/09/17 21:41:08 tom Exp $";
 
 /*
  * Title:	curses.c
@@ -461,6 +461,22 @@ screen_start(void)
 	exit(EXIT_FAILURE);
 #if HAVE_KEYPAD
     keypad(stdscr, TRUE);
+#endif
+#if HAVE_DEFINE_KEY
+    define_key("\033Ol", ',');
+    define_key("\033Om", '-');
+    define_key("\033On", '.');
+    define_key("\033Op", '0');
+    define_key("\033Oq", '1');
+    define_key("\033Or", '2');
+    define_key("\033Os", '3');
+    define_key("\033Ot", '4');
+    define_key("\033Ou", '5');
+    define_key("\033Ov", '6');
+    define_key("\033Ow", '7');
+    define_key("\033Ox", '8');
+    define_key("\033Oy", '9');
+    define_key("\033OM", '\n');
 #endif
 #if defined(COLOR_BLUE) && defined(COLOR_WHITE) && HAVE_COLOR_PAIR
     if (has_colors()) {
