@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-/* $Id: add.h,v 1.12 2010/07/08 10:45:33 tom Exp $
+/* $Id: add.h,v 1.13 2010/09/17 21:35:36 tom Exp $
  *
  * common definitions for 'add' utility
  */
@@ -47,6 +47,10 @@
 
 #ifndef HAVE_DBMALLOC_H
 #define HAVE_DBMALLOC_H 0
+#endif
+
+#ifndef HAVE_DEFINE_KEY
+#define HAVE_DEFINE_KEY 0
 #endif
 
 #ifndef HAVE_FLASH
