@@ -1,8 +1,8 @@
-# $Id: makefile.in,v 1.23 2010/09/17 21:51:06 tom Exp $
+# $Id: makefile.in,v 1.25 2011/03/06 17:15:24 tom Exp $
 # Makefile-template for 'add'
 
 THIS		= add
-RELEASE		= t20100917
+RELEASE		= t20110306
 SCREEN		= curses
 
 #### Start of system configuration section. ####
@@ -29,6 +29,7 @@ CC		= @CC@
 LINK		= $(CC)
 INSTALL		= @INSTALL@
 INSTALL_PROGRAM	= @INSTALL_PROGRAM@
+INSTALL_SCRIPT	= @INSTALL_SCRIPT@
 INSTALL_DATA	= @INSTALL_DATA@
 
 CTAGS		= @CTAGS@
@@ -64,6 +65,7 @@ DIRS = $(BINDIR) $(DATADIR) $(MANDIR)
 
 install: $(PROG) $(DIRS)
 	$(INSTALL_PROGRAM) $(PROG) $(BINDIR)/$(ACTUAL)$x
+	$(SHELL) $(srcdir)/rename.sh $(srcdir)/xterm.sh    $(ACTUAL) $(BINDIR)/x+ $(INSTALL_SCRIPT)
 	$(SHELL) $(srcdir)/rename.sh $(srcdir)/$(THIS).hlp $(ACTUAL) $(DATADIR)/$(ACTUAL).hlp $(INSTALL_PROGRAM)
 	$(SHELL) $(srcdir)/rename.sh $(srcdir)/$(THIS).1   $(ACTUAL) $(MANDIR)/$(ACTUAL).$(manext) $(INSTALL_DATA) 
 
@@ -72,6 +74,7 @@ $(DIRS):
 
 uninstall:
 	rm -f $(BINDIR)/$(ACTUAL)$x
+	rm -f $(BINDIR)/x+
 	rm -f $(DATADIR)/$(ACTUAL).hlp
 	rm -f $(MANDIR)/$(ACTUAL).$(manext)
 

@@ -1,4 +1,4 @@
-MANIFEST for add, version t20100917
+MANIFEST for add, version t20110306
 --------------------------------------------------------------------------------
 MANIFEST                        this file
 CHANGES                         summary of changes to 'add'
@@ -19,6 +19,7 @@ install-sh                      generic install-script
 makefile.in                     makefile-template for 'add'
 rename.sh                       helper-script for renaming
 screen.h                        interface to $(SCREEN).c
+xterm.sh                        wrapper for xterm to run add
 package                         subdirectory
 package/add.spec                build-script for add
 package/debian                  subdirectory
