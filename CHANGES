@@ -1,4 +1,15 @@
-$Id: CHANGES,v 1.21 2010/09/17 21:52:02 tom Exp $
+$Id: CHANGES,v 1.23 2011/03/06 17:10:36 tom Exp $
+
+2011/03/06
+----------
+	+ add "x+" wrapper script, for xterm.
+
+	+ special-case xterm's control sequence for numeric keypad "+" with
+	  ncurses' define_key() function.
+
+	+ updated configure script.
+
+	+ update config.guess, config.sub
 
 2010/09/17
 ----------

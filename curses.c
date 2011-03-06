@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2002,2007 by Thomas E. Dickey                               *
+ * Copyright 1995-2010,2011 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-static const char Id[] = "$Id: curses.c,v 1.16 2010/09/17 21:41:08 tom Exp $";
+static const char Id[] = "$Id: curses.c,v 1.17 2011/03/06 16:58:53 tom Exp $";
 
 /*
  * Title:	curses.c
@@ -463,6 +463,7 @@ screen_start(void)
     keypad(stdscr, TRUE);
 #endif
 #if HAVE_DEFINE_KEY
+    define_key("\033Ok", '+');
     define_key("\033Ol", ',');
     define_key("\033Om", '-');
     define_key("\033On", '.');

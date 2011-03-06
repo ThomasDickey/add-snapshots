@@ -1,3 +1,9 @@
+add (20110306) unstable; urgency=low
+
+  * use define_key() to support xterm numeric keypad '+'
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sun, 06 Mar 2011 11:54:08 -0500
+
 add (20100917) unstable; urgency=low
 
   * use define_key() to support vt100 numeric keypad.
