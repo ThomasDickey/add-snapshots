@@ -1,8 +1,8 @@
-# $Id: makefile.in,v 1.25 2011/03/06 17:15:24 tom Exp $
+# $Id: makefile.in,v 1.27 2013/02/26 20:10:04 tom Exp $
 # Makefile-template for 'add'
 
 THIS		= add
-RELEASE		= t20110306
+RELEASE		= t20130226
 SCREEN		= curses
 
 #### Start of system configuration section. ####
@@ -16,6 +16,7 @@ ACTUAL		= `echo $(THIS)|sed '$(transform)'`
 prefix		= @prefix@
 exec_prefix	= @exec_prefix@
 
+datarootdir	= @datarootdir@
 bindir		= @bindir@
 datadir		= @datadir@
 mandir		= @mandir@
@@ -41,7 +42,7 @@ CPPFLAGS	= @CPPFLAGS@ -DHAVE_CONFIG_H -DRELEASE=\"$(RELEASE)\" -DADD_HELPFILE=\"
 CFLAGS		= @CFLAGS@ @EXTRA_CFLAGS@
 LDFLAGS		= @LDFLAGS@
 
-x		= @PROG_EXT@
+x		= @EXEEXT@
 
 #### End of system configuration section. ####
 

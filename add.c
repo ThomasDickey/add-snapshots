@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1994-2007,2010 by Thomas E. Dickey                               *
+ * Copyright 1994-2010,2013 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,8 +19,8 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-static const char Id[] = "$Id: add.c,v 1.46 2010/07/08 21:12:58 tom Exp $";
-static const char copyrite[] = "Copyright 1994-2007,2010 by Thomas E. Dickey";
+static const char Id[] = "$Id: add.c,v 1.51 2013/02/26 20:51:48 tom Exp $";
+static const char copyrite[] = "Copyright 1994-2010,2013 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -60,7 +60,8 @@ static DATA *top_data;		/* => beginning of current screen */
 static Value val_frac;		/* # of units in 'len_frac' (e.g., 100.0) */
 static long big_long;		/* largest signed 'long' value */
 static int interval;		/* compounding interval-divisor */
-static int val_width;		/* maximum width of formatted number */
+static int max_width;		/* maximum width of formatted number */
+static int use_width;		/* working width of formatted number */
 static int len_frac;		/* nominal number of digits after period */
 static Bool show_error;		/* suppress normal reporting until GetC() */
 static Bool show_scripts;	/* force script to be visible, for testing */
@@ -289,7 +290,7 @@ static int
 CountData(DATA * np)
 {
     int seq = 0;
-    while (np->prev != 0) {
+    while (np != 0 && np->prev != 0) {
 	seq++;
 	np = np->prev;
     }
@@ -416,7 +417,7 @@ putval(Value val)
 {
     char bfr[MAXBFR];
 
-    screen_printf("%*.*s", val_width, val_width, Format(bfr, val));
+    screen_printf("%*.*s", use_width, use_width, Format(bfr, val));
 }
 
 /*
@@ -439,7 +440,7 @@ LevelOf(const DATA * target)
     DATA *np;
     int level = 0;
 
-    for (np = all_data; np != target; np = np->next) {
+    for (np = all_data; np != 0 && np != target; np = np->next) {
 	if (np->cmd == R_PAREN)
 	    level--;
 	if (np->psh)
@@ -505,7 +506,7 @@ ShowValue(DATA * np, int *editing, Bool comment)
 	    }
 
 	    if ((cmd == R_PAREN) || ((editing != 0) && !comment))
-		screen_printf("%*.*s", val_width, val_width, " ");
+		screen_printf("%*.*s", use_width, use_width, " ");
 	    else if (np->psh)
 		screen_putc(L_PAREN);
 	    else
@@ -577,7 +578,7 @@ ShowStatus(DATA * np, int opened)
     int c;
     char buffer[BUFSIZ];
 
-    if (!show_error && isVisible()) {
+    if (!show_error && np != 0 && isVisible()) {
 	screen_set_bold(TRUE);
 	screen_set_position(0, 0);
 	screen_clear_endline();
@@ -607,7 +608,7 @@ ShowStatus(DATA * np, int opened)
 		    break;
 		}
 	    }
-	    screen_set_position(0, 5 + val_width);
+	    screen_set_position(0, 5 + use_width);
 	    putval(last->sum);
 	    screen_puts(" -- total");
 	}
@@ -832,6 +833,7 @@ static int
 GetScript(void)
 {
     static int first;
+    static int valued;
     static int ignored;
     static int comment;
     int c;
@@ -847,6 +849,7 @@ GetScript(void)
 	    } else {
 		ShowInfo("Reading script");
 		first = TRUE;
+		valued = FALSE;
 	    }
 	    continue;
 	}
@@ -856,11 +859,21 @@ GetScript(void)
 	    if (c == '#' || c == COLON) {
 		comment = TRUE;
 		ignored = FALSE;
-	    } else if (!comment && (c == '\t')) {
-		ignored = TRUE;
+	    } else if (!comment) {
+		/*
+		 * We pay attention only to the first character or number on a
+		 * given input line.
+		 */
+		if (c == '\t') {
+		    ignored = TRUE;
+		} else if (valued && c == ' ') {
+		    ignored = TRUE;
+		}
 	    }
-	    if (isReturn(c))
+	    if (isReturn(c)) {
 		first = TRUE;
+		valued = FALSE;
+	    }
 	    if (ignored && isReturn(c)) {
 		ignored = FALSE;
 	    } else if (!ignored) {
@@ -873,6 +886,9 @@ GetScript(void)
 		    }
 		    first = FALSE;
 		}
+		if (isdigit(UCH(c)) || (c) == '.') {
+		    valued = TRUE;
+		}
 		return (c);
 	    }
 	}
@@ -884,9 +900,14 @@ GetScript(void)
 	    ShowRange(top_data, last);
 	    ShowValue(last, editcols, FALSE);
 	    first = TRUE;
+	    valued = FALSE;
 	    return EQUALS;	/* flush out the last line */
 	}
     }
+
+    valued = FALSE;
+    comment = FALSE;
+    ignored = FALSE;
 
     if (first) {
 	if (scriptNUM == 1)
@@ -1188,6 +1209,11 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 
     static char old_digit = EOS;	/* nonzero iff we have pending digit */
 
+    if (np == 0) {
+	*len_ = 0;
+	return 'q';
+    }
+
     if (np->cmd == R_PAREN)
 	edit = FALSE;
 
@@ -1218,7 +1244,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	}
 	if (isVisible()) {
 	    screen_set_position(row, (int) (editcols[0]
-					    + val_width
+					    + use_width
 					    - (int) strlen(buffer)));
 	    screen_puts(buffer);
 	}
@@ -1227,7 +1253,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
     }
 
     if (isVisible())
-	screen_set_position(row, editcols[0] + val_width);
+	screen_set_position(row, editcols[0] + use_width);
     col = (int) strlen(buffer);
     nesting = (*buffer == L_PAREN);
     c = EOS;
@@ -1273,7 +1299,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 * Backspace deletes the last character entered:
 	 */
 	else if (is_delete_left(c)) {
-	    col = doDeleteChar(buffer, col, val_width);
+	    col = doDeleteChar(buffer, col, use_width);
 	    if (*buffer == EOS)
 		nesting = FALSE;
 	}
@@ -1285,7 +1311,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	    if (*buffer != EOS) {
 		screen_alarm();
 	    } else {
-		col = InsertChar(buffer, c, col, lmargin, val_width, (int *) 0);
+		col = InsertChar(buffer, c, col, lmargin, use_width, (int *) 0);
 		nesting = TRUE;
 	    }
 	}
@@ -1310,13 +1336,13 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 * decoding:
 	 */
 	else if (isDigit(c)) {
-	    int limit = val_width;
+	    int limit = use_width;
 	    if (strchr(buffer, '.') == 0)
 		limit -= (1 + len_frac);
 	    if ((int) strlen(buffer) > limit)
 		screen_alarm();
 	    else
-		col = InsertChar(buffer, c, col, lmargin, val_width, (int *) 0);
+		col = InsertChar(buffer, c, col, lmargin, use_width, (int *) 0);
 	}
 	/*
 	 * Decimal point can be entered once for each number. If we
@@ -1325,8 +1351,8 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	else if (c == PERIOD) {
 	    int dot;
 	    if ((dot = DecimalPoint(buffer)) >= 0)
-		col = DeleteChar(buffer, dot, col, val_width);
-	    col = InsertChar(buffer, c, col, lmargin, val_width, (int *) 0);
+		col = DeleteChar(buffer, dot, col, use_width);
+	    col = InsertChar(buffer, c, col, lmargin, use_width, (int *) 0);
 	}
 	/*
 	 * Otherwise, we assume a new operator-character for the
@@ -1939,7 +1965,7 @@ FindHelp(const char *program)
 	    if (s[-1] == ']' || s[-1] == ':')
 		break;
     }
-# else				/* assume UNIX or MSDOS */
+# else /* assume UNIX or MSDOS */
     if (AbsolutePath(tail)) {
 	strcpy(temp, tail);
 	s = temp + strlen(temp);
@@ -1970,7 +1996,7 @@ FindHelp(const char *program)
 	    s = PathLeaf(strcpy(s, program));
 	}
     }
-# endif				/* VMS/UNIX/MSDOS */
+# endif	/* VMS/UNIX/MSDOS */
     (void) strcpy(s, tail);
     helpfile = AllocString(temp);
 }
@@ -2087,6 +2113,12 @@ Loop(void)
 		if (isCommand(chr)) {
 		    np = JumpBy(np, 1);
 		    np->cmd = (char) chr;
+		} else if (chr == 'w' && use_width < max_width) {
+		    ++use_width;
+		    ShowFrom(top_data);
+		} else if (chr == 'W' && use_width > 6) {
+		    --use_width;
+		    ShowFrom(top_data);
 		} else if (chr == EQUALS) {
 		    Recompute(np);
 		} else {
@@ -2168,7 +2200,7 @@ main(int argc, char **argv)
      *      big_long - the maximum positive value that we can stuff into
      *                 a 'long'. Assume symmetry, i.e., that we can use
      *                 the same negative magnitude.
-     *      val_width - the maximum length of a formatted number, counting
+     *      max_width - the maximum length of a formatted number, counting
      *                 sign, decimal point and commas between groups
      *                 of digits.
      */
@@ -2212,7 +2244,10 @@ main(int argc, char **argv)
     for (j = 0, val_frac = 1.0; j < len_frac; j++)
 	val_frac *= 10.0;
 
-    val_width = 1 + ((max_digits - len_frac) + 2) / 3 + max_digits + 1;
+    max_width = 1 + ((max_digits - len_frac) + 2) / 3 + max_digits + 1;
+    use_width = max_width;
+    if (use_width > 20)
+	use_width = 20;
 
     /*
      * Allocate some dummy data so we can propagate results from it.
