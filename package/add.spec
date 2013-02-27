@@ -1,7 +1,7 @@
 Summary: add - full-screen editing calculator
 %define AppProgram add
-%define AppVersion 20110306
-# $XTermId: add.spec,v 1.4 2011/03/06 16:53:25 tom Exp $
+%define AppVersion 20130226
+# $XTermId: add.spec,v 1.5 2013/02/26 20:23:18 tom Exp $
 Name: %{AppProgram}
 Version: %{AppVersion}
 Release: 1

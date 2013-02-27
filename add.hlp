@@ -41,6 +41,8 @@ Computations:
 	')'	closing parenthesis, expects another operator, not data.
 	'='	flushes out the current number, forces recomputation of the
 		running result.
+	'W'	allows one less column for numbers.
+	'w'	allows one more column for numbers.
 
 	A space flushes out the current number-input, and (by default) sets the
 	next operator to be the same as the current one.  You may repeat the

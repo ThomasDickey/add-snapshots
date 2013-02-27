@@ -1,5 +1,5 @@
 .\"/****************************************************************************
-.\" Copyright 1995-2002,2007 by Thomas E. Dickey                               *
+.\" Copyright 1995-2007,2013 by Thomas E. Dickey                               *
 .\" All Rights Reserved.                                                       *
 .\"                                                                            *
 .\" Permission to use, copy, modify, and distribute this software and its      *
@@ -18,7 +18,7 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR *
 .\" IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
 .\" ***************************************************************************/
-.\" $Id: add.1,v 1.5 2007/02/14 23:34:33 tom Exp $
+.\" $Id: add.1,v 1.8 2013/02/26 21:07:17 tom Exp $
 .de EX
 .RS
 .nf
@@ -110,6 +110,13 @@ closing parenthesis, expects another operator, not data.
 .TP
 .B "="
 flushes out the current number, forces re-computation of the running result.
+.TP
+.B "w"
+increases the width used for numbers by one column up to a platform-specific
+value.
+.TP
+.B "W"
+decreases the width used for numbers by one column, down to a minimum of 6.
 .
 .PP
 A space flushes out the current number-input, and (by default) sets the
@@ -253,7 +260,7 @@ jumps to the first entry.
 Transcript files are formatted to permit line-oriented entries:
 .
 .EX
-<operator><value><tab><ignored><tab># comment
+<operator><value><blank><ignored><blank># comment
 .EE
 .PP
 The transcripts saved by \fBadd\fR contain the running result in the
@@ -265,7 +272,6 @@ running result) in the specified file.
 .PP
 You can read and write scripts without leaving \fBadd\fR.
 .
-reads a script at the current entry
 .TP
 .BI :e " file"
 clears the current script and reads a script from the file.
@@ -274,6 +280,7 @@ clears the current script and reads a script from the file.
 shows the current script name.
 .TP
 .BI :r " file"
+reads a script at the current entry
 .TP
 .BI :w " file"
 writes a script to the specified file.
@@ -291,7 +298,7 @@ In particular, the interest and sales tax computations would be more
 useful if their precision was independent of the running total.
 .
 .SH AUTHOR
-Thomas Dickey
+Thomas E. Dickey
 .
 .SH SEE ALSO
 .PP

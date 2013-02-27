@@ -1,4 +1,18 @@
-$Id: CHANGES,v 1.23 2011/03/06 17:10:36 tom Exp $
+$Id: CHANGES,v 1.28 2013/02/26 20:57:07 tom Exp $
+
+2013/02/26
+----------
+	+ modify script-reader to treat embedded space the same as tab, telling
+	  the program to ignore the remainder of the line.
+
+	+ add null-pointer checks to quiet clang 3.1 --analyze warnings
+
+	+ limit value-width to 20 digits by default.  Use w/W commands to
+	  narrow/widen the display to make better use of space for comments.
+
+	+ updated configure script.
+
+	+ update config.guess, config.sub
 
 2011/03/06
 ----------
