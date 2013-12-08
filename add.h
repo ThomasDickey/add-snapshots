@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2002,2007 by Thomas E. Dickey                               *
+ * Copyright 1995-2007,2010 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-/* $Id: add.h,v 1.13 2010/09/17 21:35:36 tom Exp $
+/* $Id: add.h,v 1.14 2010/09/17 21:35:36 tom Exp $
  *
  * common definitions for 'add' utility
  */
