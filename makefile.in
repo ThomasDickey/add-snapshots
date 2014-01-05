@@ -1,8 +1,8 @@
-# $Id: makefile.in,v 1.28 2013/12/08 16:05:55 tom Exp $
+# $Id: makefile.in,v 1.30 2014/01/05 16:17:08 tom Exp $
 # Makefile-template for 'add'
 
 THIS		= add
-RELEASE		= t20131208
+RELEASE		= t20140105
 SCREEN		= curses
 
 #### Start of system configuration section. ####
@@ -79,17 +79,17 @@ uninstall:
 	rm -f $(DATADIR)/$(ACTUAL).hlp
 	rm -f $(MANDIR)/$(ACTUAL).$(manext)
 
-mostlyclean:
+mostlyclean ::
 	rm -f *.o core *~ *.BAK *.trace *.atac
 
-clean: mostlyclean
+clean :: mostlyclean
 	rm -f $(PROG)
 
-distclean: clean
+distclean :: clean
 	rm -f makefile config.log config.cache config.status config.h
 	rm -f tags TAGS
 
-realclean: distclean
+realclean :: distclean
 	@-
 
 tags:

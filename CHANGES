@@ -1,4 +1,9 @@
-$Id: CHANGES,v 1.29 2013/12/08 16:06:25 tom Exp $
+$Id: CHANGES,v 1.30 2014/01/05 16:14:34 tom Exp $
+
+2014/01/05
+----------
+	+ add "docs" rule to makefile
+	+ update config.guess
 
 2013/12/08
 ----------
