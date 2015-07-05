@@ -32,7 +32,8 @@ configure-stamp:
 		--build=$(DEB_BUILD_GNU_TYPE) \
 		--prefix=/usr \
 		--mandir=\$${prefix}/share/man \
-		--sysconfdir=/etc
+		--sysconfdir=/etc \
+		--with-man2html
 
 	touch configure-stamp
 

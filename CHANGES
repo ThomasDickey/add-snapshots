@@ -1,4 +1,16 @@
-$Id: CHANGES,v 1.30 2014/01/05 16:14:34 tom Exp $
+$Id: CHANGES,v 1.33 2015/07/05 01:06:26 tom Exp $
+
+2015/07/04
+----------
+	+ modify "docs" rule to permit man2html rather than groff
+
+	+ add --disable-echo option to configure script
+
+	+ add --with-screen option to configure script
+
+	+ updated configure script.
+
+	+ update config.guess, config.sub
 
 2014/01/05
 ----------

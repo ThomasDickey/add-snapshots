@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2007,2010 by Thomas E. Dickey                               *
+ * Copyright 1995-2010,2015 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-/* $Id: add.h,v 1.14 2010/09/17 21:35:36 tom Exp $
+/* $Id: add.h,v 1.15 2015/07/05 01:00:04 tom Exp $
  *
  * common definitions for 'add' utility
  */
@@ -85,6 +85,14 @@
 #define HAVE_XCURSES 0
 #endif
 
+#ifndef NEED_GETOPT_H
+#define NEED_GETOPT_H 0
+#endif
+
+#ifndef HAVE_GETOPT_HEADER
+#define HAVE_GETOPT_HEADER 0
+#endif
+
 #ifndef NO_LEAKS
 #define NO_LEAKS 0
 #endif
@@ -117,13 +125,12 @@
 #include	<sys/types.h>
 #include	<sys/stat.h>
 
-#if HAVE_GETOPT
-# if HAVE_GETOPT_H
+#if NEED_GETOPT_H
 #  include <getopt.h>
-# else
+#endif
+#if !HAVE_GETOPT_HEADER
    extern char	*optarg;
    extern int	optind;
-# endif
 #endif
 
 #if HAVE_DBMALLOC_H
