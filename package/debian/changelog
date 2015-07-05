@@ -1,3 +1,9 @@
+add (20150704) unstable; urgency=low
+
+  * update configure script
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Sat, 04 Jul 2015 21:45:10 -0400
+
 add (20140105) unstable; urgency=low
 
   * update configure script
