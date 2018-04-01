@@ -4,7 +4,7 @@ Section: devel
 Priority: optional
 Standards-Version: 3.8.4
 Build-Depends: debhelper (>= 5)
-Homepage: http://invisible-island.net/add/
+Homepage: https://invisible-island.net/add/
 
 Package: add
 Architecture: any

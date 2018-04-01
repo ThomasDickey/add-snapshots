@@ -1,13 +1,13 @@
 Summary: add - full-screen editing calculator
 %define AppProgram add
-%define AppVersion 20150704
-# $XTermId: add.spec,v 1.8 2015/07/05 01:45:45 tom Exp $
+%define AppVersion 20180401
+# $XTermId: add.spec,v 1.10 2018/04/01 19:24:11 tom Exp $
 Name: %{AppProgram}
 Version: %{AppVersion}
 Release: 1
 License: MIT
 Group: Applications/Development
-URL: ftp://invisible-island.net/%{AppProgram}
+URL: ftp://ftp.invisible-island.net/%{AppProgram}
 Source0: %{AppProgram}-%{AppVersion}.tgz
 Packager: Thomas Dickey <dickey@invisible-island.net>
 
@@ -25,18 +25,22 @@ first).
 
 %prep
 
+# no need for debugging symbols...
+%define debug_package %{nil}
+
 %setup -q -n %{AppProgram}-%{AppVersion}
 
 %build
 
 INSTALL_PROGRAM='${INSTALL}' \
-	./configure \
-		--target %{_target_platform} \
-		--prefix=%{_prefix} \
-		--bindir=%{_bindir} \
-		--datadir=%{_datadir} \
-		--mandir=%{_mandir} \
-		--with-man2html
+./configure \
+ --target %{_target_platform} \
+ --prefix=%{_prefix} \
+ --bindir=%{_bindir} \
+ --libdir=%{_libdir} \
+ --datadir=%{_datadir} \
+ --mandir=%{_mandir} \
+ --with-man2html
 
 make
 
@@ -52,12 +56,16 @@ strip $RPM_BUILD_ROOT%{_bindir}/%{AppProgram}
 
 %files
 %defattr(-,root,root)
+%{_bindir}/x+
 %{_bindir}/%{AppProgram}
 %{_datadir}/%{AppProgram}.hlp
 %{_mandir}/man1/%{AppProgram}.*
 
 %changelog
 # each patch should add its ChangeLog entries here
+
+* Sun Apr 01 2018 Thomas Dickey
+- update ftp url, add "x+" to package, suppress debug-symbols
 
 * Wed Jul 07 2010 Thomas Dickey
 - initial version
