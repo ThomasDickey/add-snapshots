@@ -1,4 +1,12 @@
-$Id: CHANGES,v 1.33 2015/07/05 01:06:26 tom Exp $
+$Id: CHANGES,v 1.35 2018/04/01 19:16:34 tom Exp $
+
+2018/04/01
+----------
+	+ update ftp url in rpm script
+
+	+ updated configure script.
+
+	+ update config.guess, config.sub
 
 2015/07/04
 ----------
