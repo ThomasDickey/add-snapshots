@@ -1,5 +1,5 @@
 #! /bin/sh
-# $Id: rename.sh,v 1.2 2010/07/08 23:22:43 tom Exp $
+# $Id: rename.sh,v 1.3 2018/07/01 17:06:39 tom Exp $
 # install-helper for add's manpage and help-file.
 #
 # $1 = input file
@@ -26,6 +26,7 @@ sed	-e "s,\<fBadd\>,fB$BINARY,g" \
 	-e "s,\<fBAdd\>,fB$ONE_CAPS,g" \
 	-e "s,\<fBADD\>,fB$ALL_CAPS,g" \
 	-e "s,\<ADD\>,$ALL_CAPS,g" \
+	-e "s,\<add\>,$BINARY,g" \
 	-e "s,---,$UNDERLINE," \
 	<$SOURCE >source.tmp
 "$@" source.tmp "$TARGET"

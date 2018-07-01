@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1994-2010,2013 by Thomas E. Dickey                               *
+ * Copyright 1994-2013,2018 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,8 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-static const char Id[] = "$Id: add.c,v 1.51 2013/02/26 20:51:48 tom Exp $";
-static const char copyrite[] = "Copyright 1994-2010,2013 by Thomas E. Dickey";
+static const char copyrite[] = "Copyright 1994-2013,2018 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -32,6 +31,8 @@ static const char copyrite[] = "Copyright 1994-2010,2013 by Thomas E. Dickey";
  *		a column of values, operators and results.  The user can
  *		move up and down in the column, modifying the values and
  *		operators.
+ *
+ * $Id: add.c,v 1.56 2018/07/01 19:07:37 tom Exp $
  */
 
 #include <add.h>
@@ -45,6 +46,13 @@ SSTACK {
     FILE *sfp;
     char **sscripts;
 };
+
+#ifndef GCC_NORETURN
+#define GCC_NORETURN		/* nothing */
+#endif
+
+static void usage(void) GCC_NORETURN;
+static void failed(const char *) GCC_NORETURN;
 
 static void Recompute(DATA *);
 static void ShowRange(DATA *, DATA *);
@@ -1076,23 +1084,43 @@ ShowScriptName(void)
     (void) screen_getc();
 }
 
+static void
+init_editor(char *buffer, int length, int *end, int *offset, int *lmargin)
+{
+    *offset = 0;
+    *lmargin = screen_col();
+    *end = screen_cols_left(*lmargin);
+    *end = min(*end, length);
+    if (*end < (int) strlen(buffer))
+	*offset = (int) strlen(buffer) - *end;
+}
+
+static void
+repaint_screen(DATA * np)
+{
+    int top, seq;
+
+    seq = CountData(np);
+    top = seq - screen_full + 1;
+    top = max(top, 1);
+    top_data = FindData(top);
+    ShowFrom(top_data);
+}
+
 /*
  * Edit an arbitrary buffer, starting at the current screen position.
  */
 static void
-EditBuffer(char *buffer, int length)
+EditBuffer(char *buffer, int length, DATA * np)
 {
     int end, chr;
     int col = (int) strlen(buffer);
     int done = FALSE;
-    int offset = 0;
-    int lmargin = screen_col();
+    int offset;
+    int lmargin;
     int shown = FALSE;
 
-    end = screen_cols_left(lmargin);
-    end = min(end, length);
-    if (end < (int) strlen(buffer))
-	offset = (int) strlen(buffer) - end;
+    init_editor(buffer, length, &end, &offset, &lmargin);
     while (!done) {
 	while (col - offset < 0) {
 	    offset--;
@@ -1121,6 +1149,9 @@ EditBuffer(char *buffer, int length)
 		col = InsertChar(buffer, chr, col, lmargin, 0, &offset);
 	    else
 		screen_alarm();
+	} else if (chr == CTL('L')) {
+	    init_editor(buffer, length, &end, &offset, &lmargin);
+	    repaint_screen(np);
 	} else if (is_delete_left(chr)) {
 	    col = doDeleteChar(buffer, col, 0);
 	} else if (is_left_char(chr)) {
@@ -1157,7 +1188,7 @@ EditComment(DATA * np)
 	screen_set_position(row, editcols[1]);
 	screen_puts(" # ");
     }
-    EditBuffer(buffer, sizeof(buffer));
+    EditBuffer(buffer, sizeof(buffer), np);
     TrimString(buffer);
 
     if (*buffer != EOS || (np->txt != 0)) {
@@ -1709,7 +1740,7 @@ ColonCommand(DATA * np)
     screen_putc(COLON);
     screen_putc(' ');
     *buffer = EOS;
-    EditBuffer(buffer, sizeof(buffer));
+    EditBuffer(buffer, sizeof(buffer), np);
     TrimString(buffer);
     reply = buffer;
     while (isspace(UCH(*reply)))
@@ -1818,6 +1849,8 @@ ScreenMovement(DATA ** pp, int chr)
 	top_data = FindData(top);
 	ShowFrom(top_data);
 #endif
+    } else if (chr == CTL('L')) {
+	repaint_screen(np);
     } else if (chr == 'H') {	/* C: move to first entry on screen */
 	np = top_data;
     } else if (chr == 'L') {	/* C: move to last entry on screen */
@@ -2221,6 +2254,7 @@ main(int argc, char **argv)
 		fprintf(stderr, "Option p limited to 0..%d\n",
 			max_digits - 2);
 		usage();
+		/* NOTREACHED */
 	    }
 	    break;
 	case 'i':
@@ -2228,14 +2262,17 @@ main(int argc, char **argv)
 		|| (interval <= 0 || interval > 100)) {
 		fprintf(stderr, "Option i limited to 0..100\n");
 		usage();
+		/* NOTREACHED */
 	    }
 	    break;
 	case 'o':
 	    top_output = optarg;
 	    break;
 	case 'h':
+	    /* FALLTHRU */
 	default:
 	    usage();
+	    /* NOTREACHED */
 	case 'V':
 	    puts(RELEASE);
 	    return EXIT_SUCCESS;

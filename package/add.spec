@@ -1,7 +1,7 @@
 Summary: add - full-screen editing calculator
 %define AppProgram add
-%define AppVersion 20180401
-# $XTermId: add.spec,v 1.10 2018/04/01 19:24:11 tom Exp $
+%define AppVersion 20180701
+# $XTermId: add.spec,v 1.12 2018/07/01 17:00:34 tom Exp $
 Name: %{AppProgram}
 Version: %{AppVersion}
 Release: 1
@@ -33,7 +33,7 @@ first).
 %build
 
 INSTALL_PROGRAM='${INSTALL}' \
-./configure \
+%configure \
  --target %{_target_platform} \
  --prefix=%{_prefix} \
  --bindir=%{_bindir} \
