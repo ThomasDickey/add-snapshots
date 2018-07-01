@@ -1,8 +1,8 @@
-# $Id: makefile.in,v 1.33 2018/04/01 19:12:36 tom Exp $
+# $Id: makefile.in,v 1.35 2018/07/01 17:37:51 tom Exp $
 # Makefile-template for 'add'
 
 THIS		= add
-RELEASE		= t20180401
+RELEASE		= t20180701
 SCREEN		= curses
 
 #### Start of system configuration section. ####
@@ -68,7 +68,7 @@ DIRS = $(BINDIR) $(DATADIR) $(MANDIR)
 install: $(PROG) $(DIRS)
 	$(INSTALL_PROGRAM) $(PROG) $(BINDIR)/$(ACTUAL)$x
 	$(SHELL) $(srcdir)/rename.sh $(srcdir)/xterm.sh    $(ACTUAL) $(BINDIR)/x+ $(INSTALL_SCRIPT)
-	$(SHELL) $(srcdir)/rename.sh $(srcdir)/$(THIS).hlp $(ACTUAL) $(DATADIR)/$(ACTUAL).hlp $(INSTALL_PROGRAM)
+	$(SHELL) $(srcdir)/rename.sh $(srcdir)/$(THIS).hlp $(ACTUAL) $(DATADIR)/$(ACTUAL).hlp $(INSTALL_DATA)
 	$(SHELL) $(srcdir)/rename.sh $(srcdir)/$(THIS).1   $(ACTUAL) $(MANDIR)/$(ACTUAL).$(manext) $(INSTALL_DATA) 
 
 $(DIRS):

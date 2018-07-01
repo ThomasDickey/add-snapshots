@@ -1,4 +1,22 @@
-$Id: CHANGES,v 1.35 2018/04/01 19:16:34 tom Exp $
+$Id: CHANGES,v 1.41 2018/07/01 18:39:23 tom Exp $
+
+2018/07/01
+----------
+	+ repaint screen on CTL/L, and resize if ncurses returns KEY_RESIZE.
+
+	+ change font in xterm.sh to avoid using font-alias (suggested by Felix
+	  Becker).
+
+	+ corrected install-permissions for add.hlp
+
+	+ modify rename.sh to handle "add" in xterm.sh script (report by Felix
+	  Becker).
+
+	+ use recommended flags for compiling test-packages
+
+	+ updated configure script.
+
+	+ update config.guess, config.sub
 
 2018/04/01
 ----------

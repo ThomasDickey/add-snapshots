@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2010,2011 by Thomas E. Dickey                               *
+ * Copyright 1995-2011,2018 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,8 +19,6 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-static const char Id[] = "$Id: curses.c,v 1.17 2011/03/06 16:58:53 tom Exp $";
-
 /*
  * Title:	curses.c
  * Author:	T.E.Dickey
@@ -29,6 +27,7 @@ static const char Id[] = "$Id: curses.c,v 1.17 2011/03/06 16:58:53 tom Exp $";
  *
  * Function:	This module hides the curses functional interface from 'add'
  *
+ * $Id: curses.c,v 1.20 2018/07/01 18:22:53 tom Exp $
  */
 
 #include <add.h>
@@ -88,6 +87,18 @@ int screen_half;		/* scrolling amount */
 #if HAVE_COLOR_PAIR
 static chtype current_color;
 #endif
+
+static void
+set_screensize(void)
+{
+    screen_full = LINES - 1;
+    screen_half = (screen_full + 1) / 2;
+    screen_active = TRUE;
+
+#if HAVE_WSETSCRREG
+    setscrreg(2, screen_full);
+#endif
+}
 
 int
 is_delete_left(int c)
@@ -257,6 +268,7 @@ screen_col(void)
     int y, x;
 
     getyx(stdscr, y, x);
+    (void) y;
     return x;
 }
 
@@ -296,7 +308,6 @@ screen_getc(void)
 {
     int c;
 
-    refresh();
     c = getch();
     switch (c) {
     case PADSLASH:
@@ -314,6 +325,12 @@ screen_getc(void)
     case PADENTER:
 	c = '\n';
 	break;
+#ifdef KEY_RESIZE
+    case KEY_RESIZE:
+	set_screensize();
+	ungetch(CTL('L'));
+	break;
+#endif
     }
     return (c);
 }
@@ -415,6 +432,7 @@ screen_row(void)
     int y, x;
 
     getyx(stdscr, y, x);
+    (void) x;
     return y;
 }
 
@@ -498,11 +516,5 @@ screen_start(void)
     raw();
     nonl();
     noecho();
-    screen_full = LINES - 1;
-    screen_half = (screen_full + 1) / 2;
-    screen_active = TRUE;
-
-#if HAVE_WSETSCRREG
-    setscrreg(2, screen_full);
-#endif
+    set_screensize();
 }

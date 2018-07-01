@@ -98,6 +98,7 @@ Scrolling/cursor movement:
 	L	move to the last line on the screen
 	CTL/F	scroll forward one screen.
 	CTL/B	scroll backward one screen.
+	CTL/L	repaint screen
 	j	move forward one line (also CTL/N).
 	k	move backward one line (also CTL/P).
 	z<CR>	move the current line to the top of the screen.
