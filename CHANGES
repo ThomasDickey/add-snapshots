@@ -1,4 +1,16 @@
-$Id: CHANGES,v 1.41 2018/07/01 18:39:23 tom Exp $
+$Id: CHANGES,v 1.45 2020/09/22 19:43:17 tom Exp $
+
+2020/09/22
+----------
+	+ use ".PHONY" in makefile
+
+	+ remove obsolete makefile-rules
+
+	+ improve responsiveness to screen-sizing.
+
+	+ updated configure script.
+
+	+ update config.guess, config.sub
 
 2018/07/01
 ----------
