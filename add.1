@@ -1,5 +1,5 @@
 .\"/****************************************************************************
-.\" Copyright 1995-2007,2013 by Thomas E. Dickey                               *
+.\" Copyright 1995-2013,2020 by Thomas E. Dickey                               *
 .\" All Rights Reserved.                                                       *
 .\"                                                                            *
 .\" Permission to use, copy, modify, and distribute this software and its      *
@@ -18,18 +18,20 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR *
 .\" IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
 .\" ***************************************************************************/
-.\" $Id: add.1,v 1.8 2013/02/26 21:07:17 tom Exp $
-.de EX
-.RS
-.nf
-.sp
-.fam C	\" groff: Courier
-..
-.de EE
+.\" $Id: add.1,v 1.9 2020/09/22 08:01:08 tom Exp $
+.de NE
 .fi
-.RE
-.sp .5
-.fam T	\" groff: Times-Roman (default)
+.ft R
+.ie n  .in -4
+.el    .in -2
+..
+.de NS
+.ie n  .sp
+.el    .sp .5
+.ie n  .in +4
+.el    .in +2
+.nf
+.ft C			\" Courier
 ..
 .
 .TH ADD 1
@@ -60,7 +62,7 @@ Scripts are loaded from left to right (with the "output" processed first).
 Command line options of \fBadd\fR are:
 .
 .TP
-.BI \-h
+.B \-h
 Prints the list of options.
 .TP
 .BI \-i " interval"
@@ -259,9 +261,9 @@ jumps to the first entry.
 .
 Transcript files are formatted to permit line-oriented entries:
 .
-.EX
+.NS
 <operator><value><blank><ignored><blank># comment
-.EE
+.NE
 .PP
 The transcripts saved by \fBadd\fR contain the running result in the
 "ignored" part.
@@ -276,7 +278,7 @@ You can read and write scripts without leaving \fBadd\fR.
 .BI :e " file"
 clears the current script and reads a script from the file.
 .TP
-.BI :f
+.B :f
 shows the current script name.
 .TP
 .BI :r " file"

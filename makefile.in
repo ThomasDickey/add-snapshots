@@ -1,8 +1,8 @@
-# $Id: makefile.in,v 1.35 2018/07/01 17:37:51 tom Exp $
+# $Id: makefile.in,v 1.38 2020/09/22 19:44:26 tom Exp $
 # Makefile-template for 'add'
 
 THIS		= add
-RELEASE		= t20180701
+RELEASE		= t20200922
 SCREEN		= curses
 
 #### Start of system configuration section. ####
@@ -56,6 +56,8 @@ OBJ = $(THIS).o $(SCREEN).o
 
 PROG	= $(THIS)$x
 
+@MAKE_PHONY@.PHONY: all install uninstall clean mostlyclean distclean realclean lint check
+
 all:	$(PROG)
 
 $(PROG): $(OBJ)
@@ -102,38 +104,7 @@ tags:
 lint:
 	$(LINT) $(LINTOPTS) $(CPPFLAGS) $(THIS).c $(SCREEN).c
 
-# I keep my sources in RCS, and assign a symbolic release to the current patch
-# level.  The 'manifest' script knows how to build a list of files for a given
-# revision.
-MANIFEST:
-	manifest -r$(RELEASE) \
-		$(THIS).man testing/case*.dcl testing/case*.bat
-
-dist: MANIFEST
-	- rm -f .fname .files
-	echo $(THIS)-$(RELEASE) >.fname
-	cat MANIFEST | grep ' ' | egrep -v ' subdirectory$$' | sed -e 's/\ .*//' | uniq >.files
-	rm -rf `cat .fname`
-	TOP=`cat .fname`; mkdir $$TOP `cat .files | grep / | sed -e 's@/.*@@' | sed -e s@\^@$$TOP/@ | uniq`
-	for file in `cat .files`; do \
-	  ln $(srcdir)/$$file `cat .fname`/$$file \
-	    || { echo copying $$file instead; cp $$file `cat .fname`/$$file; }; \
-	done
-	tar cf - `cat .fname` | gzip >`cat .fname`.tgz
-	rm -rf `cat .fname` .fname .files
-	ls -l *.tgz
-
-# Some of the output will be uuencoded because the test scripts include
-# <CR><LF> terminated ".bat" files for MS-DOS.
-dist-shar: MANIFEST
-	- rm -f .fname .files
-	echo $(THIS)-$(RELEASE) >.fname
-	cat MANIFEST | grep ' ' | egrep -v ' subdirectory$$' | sed -e 's/\ .*//' | uniq >.files
-	shar -M -n`cat .fname` -opart -l50 `cat .files`
-	- rm -f .fname .files
-	ls -l part.*
-
-$(THIS).o:	config.h
+$(OBJS): config.h
 
 check: $(PROG)
 	cd testing; sh ./run_test.sh	

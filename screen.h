@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995,2007 by Thomas E. Dickey                                    *
+ * Copyright 1995-2007,2020 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,38 +19,43 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-/* $Id: screen.h,v 1.5 2007/02/15 00:25:14 tom Exp $ */
-extern	Bool	screen_active;
-extern	int	screen_half;
-extern	int	screen_full;
+/* $Id: screen.h,v 1.6 2020/09/22 19:31:50 tom Exp $ */
+#ifndef SCREEN_H
+#define SCREEN_H
 
-extern	Bool	is_delete_left(int c);
-extern	Bool	is_down_char(int c);
-extern	Bool	is_down_page(int c);
-extern	Bool	is_end_char(int c);
-extern	Bool	is_home_char(int c);
-extern	Bool	is_left_char(int c);
-extern	Bool	is_right_char(int c);
-extern	Bool	is_up_char(int c);
-extern	Bool	is_up_page(int c);
-extern	void	screen_alarm(void);
-extern	void	screen_clear_bottom(void);
-extern	void	screen_clear_endline(void);
-extern	int	screen_col(void);
-extern	int	screen_cols_left(int col);
-extern	void	screen_delete_char(void);
-extern	void	screen_finish(void);
-extern	int	screen_getc(void);
-extern	void	screen_insert_char(int c);
-extern	void	screen_message(const char *format, ...);
-extern	int	screen_move_left(int column, int limit);
-extern	int	screen_move_right(int column, int limit);
-extern	void	screen_printf(const char *format, ...);
-extern	void	screen_putc(int c);
-extern	void	screen_puts(const char *string);
-extern	int	screen_row(void);
-extern	int	screen_rows_left(int row);
-extern	void	screen_set_bold(Bool flag);
-extern	void	screen_set_position(int row, int column);
-extern	void	screen_set_reverse(Bool flag);
-extern	void	screen_start(void);
+extern Bool screen_active;
+extern int screen_half;
+extern int screen_full;
+
+extern Bool is_delete_left(int c);
+extern Bool is_down_char(int c);
+extern Bool is_down_page(int c);
+extern Bool is_end_char(int c);
+extern Bool is_home_char(int c);
+extern Bool is_left_char(int c);
+extern Bool is_right_char(int c);
+extern Bool is_up_char(int c);
+extern Bool is_up_page(int c);
+extern void screen_alarm(void);
+extern void screen_clear_bottom(void);
+extern void screen_clear_endline(void);
+extern int screen_col(void);
+extern int screen_cols_left(int col);
+extern void screen_delete_char(void);
+extern void screen_finish(void);
+extern int screen_getc(void);
+extern void screen_insert_char(int c);
+extern void screen_message(const char *format, ...);
+extern int screen_move_left(int column, int limit);
+extern int screen_move_right(int column, int limit);
+extern void screen_printf(const char *format, ...);
+extern void screen_putc(int c);
+extern void screen_puts(const char *string);
+extern int screen_row(void);
+extern int screen_rows_left(int row);
+extern void screen_set_bold(Bool flag);
+extern void screen_set_position(int row, int column);
+extern void screen_set_reverse(Bool flag);
+extern void screen_start(void);
+
+#endif /* SCREEN_H */

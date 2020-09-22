@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2011,2018 by Thomas E. Dickey                               *
+ * Copyright 1995-2018,2020 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -27,7 +27,7 @@
  *
  * Function:	This module hides the curses functional interface from 'add'
  *
- * $Id: curses.c,v 1.20 2018/07/01 18:22:53 tom Exp $
+ * $Id: curses.c,v 1.21 2020/09/22 19:29:50 tom Exp $
  */
 
 #include <add.h>
@@ -327,8 +327,14 @@ screen_getc(void)
 	break;
 #ifdef KEY_RESIZE
     case KEY_RESIZE:
+	timeout(50);
+	do {
+	} while ((c = getch()) == KEY_RESIZE);
+	timeout(-1);
 	set_screensize();
 	ungetch(CTL('L'));
+	if (c != ERR)
+	    ungetch(c);
 	break;
 #endif
     }
@@ -348,7 +354,7 @@ screen_insert_char(int c)
  * Show text in the status line
  */
 void
-screen_message(const char *format,...)
+screen_message(const char *format, ...)
 {
     char msg[BUFSIZ];
     va_list ap;
@@ -400,7 +406,7 @@ screen_move_right(int col, int limit)
 }
 
 void
-screen_printf(const char *format,...)
+screen_printf(const char *format, ...)
 {
     char msg[BUFSIZ];
     va_list ap;

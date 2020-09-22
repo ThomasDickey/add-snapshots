@@ -1,3 +1,9 @@
+add (20200922) unstable; urgency=low
+
+  * maintenance updates
+
+ -- Thomas E. Dickey <dickey@invisible-island.net>  Tue, 22 Sep 2020 03:49:29 -0400
+
 add (20180701) unstable; urgency=low
 
   * update configure script
