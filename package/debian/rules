@@ -38,6 +38,8 @@ configure-stamp:
 		--prefix=/usr \
 		--mandir=\$${prefix}/share/man \
 		--sysconfdir=/etc \
+		--enable-warnings \
+		--enable-stdnoreturn \
 		--with-man2html
 
 	touch configure-stamp

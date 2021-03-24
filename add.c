@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1994-2013,2018 by Thomas E. Dickey                               *
+ * Copyright 1994-2018,2021 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-static const char copyrite[] = "Copyright 1994-2013,2018 by Thomas E. Dickey";
+static const char copyrite[] = "Copyright 1994-2018,2021 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -32,7 +32,7 @@ static const char copyrite[] = "Copyright 1994-2013,2018 by Thomas E. Dickey";
  *		move up and down in the column, modifying the values and
  *		operators.
  *
- * $Id: add.c,v 1.56 2018/07/01 19:07:37 tom Exp $
+ * $Id: add.c,v 1.57 2021/03/24 19:19:01 tom Exp $
  */
 
 #include <add.h>
@@ -51,8 +51,8 @@ SSTACK {
 #define GCC_NORETURN		/* nothing */
 #endif
 
-static void usage(void) GCC_NORETURN;
-static void failed(const char *) GCC_NORETURN;
+static GCC_NORETURN void usage(void);
+static GCC_NORETURN void failed(const char *);
 
 static void Recompute(DATA *);
 static void ShowRange(DATA *, DATA *);
