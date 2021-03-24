@@ -1,7 +1,7 @@
 Summary: add - full-screen editing calculator
 %define AppProgram add
-%define AppVersion 20210108
-# $XTermId: add.spec,v 1.14 2021/01/08 20:45:09 tom Exp $
+%define AppVersion 20210324
+# $XTermId: add.spec,v 1.17 2021/03/24 20:58:57 tom Exp $
 Name: %{AppProgram}
 Version: %{AppVersion}
 Release: 1
@@ -40,6 +40,8 @@ INSTALL_PROGRAM='${INSTALL}' \
  --libdir=%{_libdir} \
  --datadir=%{_datadir} \
  --mandir=%{_mandir} \
+ --enable-warnings \
+ --enable-stdnoreturn \
  --with-man2html
 
 make
