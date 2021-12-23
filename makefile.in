@@ -1,8 +1,8 @@
-# $Id: makefile.in,v 1.40 2021/03/24 19:13:46 tom Exp $
+# $Id: makefile.in,v 1.42 2021/12/22 23:24:21 tom Exp $
 # Makefile-template for 'add'
 
 THIS		= add
-RELEASE		= t20210324
+RELEASE		= t20211222
 SCREEN		= curses
 
 #### Start of system configuration section. ####
@@ -36,9 +36,15 @@ INSTALL_DATA	= @INSTALL_DATA@
 CTAGS		= @CTAGS@
 ETAGS		= @ETAGS@
 LINT		= @LINT@
+LINT_OPTS	= @LINT_OPTS@
 
 LIBS		= @LIBS@
-CPPFLAGS	= @CPPFLAGS@ -DHAVE_CONFIG_H -DRELEASE=\"$(RELEASE)\" -DADD_HELPFILE=\"$(datadir)/$(ACTUAL).hlp\" -I. -I$(srcdir)
+CPPFLAGS	= @CPPFLAGS@ \
+		  -DHAVE_CONFIG_H \
+		  -DRELEASE=\"$(RELEASE)\" \
+		  -DADD_PROGRAM=\"$(ACTUAL)\" \
+		  -DADD_HELPFILE=\"$(datadir)/$(ACTUAL).hlp\" \
+		  -I. -I$(srcdir)
 CFLAGS		= @CFLAGS@ @EXTRA_CFLAGS@
 LDFLAGS		= @LDFLAGS@
 
@@ -56,7 +62,7 @@ OBJ = $(THIS).o $(SCREEN).o
 
 PROG	= $(THIS)$x
 
-@MAKE_PHONY@.PHONY: all install uninstall clean mostlyclean distclean realclean lint check
+@MAKE_PHONY@.PHONY: all install install-xterm uninstall uninstall-xterm clean mostlyclean distclean realclean lint check
 
 all:	$(PROG)
 
@@ -69,18 +75,22 @@ DIRS = $(BINDIR) $(DATADIR) $(MANDIR)
 
 install: $(PROG) $(DIRS)
 	$(INSTALL_PROGRAM) $(PROG) $(BINDIR)/$(ACTUAL)$x
-	$(SHELL) $(srcdir)/rename.sh $(srcdir)/xterm.sh    $(ACTUAL) $(BINDIR)/x+ $(INSTALL_SCRIPT)
 	$(SHELL) $(srcdir)/rename.sh $(srcdir)/$(THIS).hlp $(ACTUAL) $(DATADIR)/$(ACTUAL).hlp $(INSTALL_DATA)
 	$(SHELL) $(srcdir)/rename.sh $(srcdir)/$(THIS).1   $(ACTUAL) $(MANDIR)/$(ACTUAL).$(manext) $(INSTALL_DATA) 
+
+install-xterm : install
+	$(SHELL) $(srcdir)/rename.sh $(srcdir)/xterm.sh    $(ACTUAL) $(BINDIR)/x+ $(INSTALL_SCRIPT)
 
 $(DIRS):
 	mkdir -p $@
 
 uninstall:
 	rm -f $(BINDIR)/$(ACTUAL)$x
-	rm -f $(BINDIR)/x+
 	rm -f $(DATADIR)/$(ACTUAL).hlp
 	rm -f $(MANDIR)/$(ACTUAL).$(manext)
+
+uninstall-xterm :
+	rm -f $(BINDIR)/x+
 
 mostlyclean ::
 	rm -f *.o core *~ *.BAK *.trace *.atac
@@ -89,8 +99,9 @@ clean :: mostlyclean
 	rm -f $(PROG)
 
 distclean :: clean
-	rm -f makefile config.log config.cache config.status config.h man2html.tmp
+	rm -f config.log config.cache config.status config.h man2html.tmp
 	rm -f tags TAGS
+	rm -f makefile
 
 realclean :: distclean
 	@-
@@ -102,9 +113,9 @@ tags:
 @MAKE_UPPER_TAGS@	$(ETAGS) $(THIS).c $(SCREEN).c $(HDRS)
 
 lint:
-	$(LINT) $(LINTOPTS) $(CPPFLAGS) $(THIS).c $(SCREEN).c
+	$(LINT) $(LINT_OPTS) $(CPPFLAGS) $(THIS).c $(SCREEN).c
 
 $(OBJS): config.h
 
 check: $(PROG)
-	cd testing; sh ./run_test.sh	
+	cd testing && $(SHELL) ./run_test.sh	
