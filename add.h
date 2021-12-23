@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2015,2020 by Thomas E. Dickey                               *
+ * Copyright 1995-2020,2021 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-/* $Id: add.h,v 1.16 2020/09/22 19:30:51 tom Exp $
+/* $Id: add.h,v 1.18 2021/12/22 23:09:53 tom Exp $
  *
  * common definitions for 'add' utility
  */
@@ -120,6 +120,7 @@
 #include	<ctype.h>
 #include	<errno.h>
 #include	<string.h>
+#include	<limits.h>
 #include	<math.h>
 #include	<signal.h>
 #include	<sys/types.h>
@@ -182,6 +183,10 @@ extern int optind;
 /*
  * Local declarations:
  */
+#ifndef ADD_PROGRAM
+#define ADD_PROGRAM "add"
+#endif
+
 #ifndef min
 #define min(a,b) ((a)<(b)?(a):(b))
 #endif

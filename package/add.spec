@@ -1,7 +1,7 @@
 Summary: add - full-screen editing calculator
 %define AppProgram add
-%define AppVersion 20210324
-# $XTermId: add.spec,v 1.17 2021/03/24 20:58:57 tom Exp $
+%define AppVersion 20211222
+# $Id: add.spec,v 1.19 2021/12/22 23:56:38 tom Exp $
 Name: %{AppProgram}
 Version: %{AppVersion}
 Release: 1
@@ -38,7 +38,7 @@ INSTALL_PROGRAM='${INSTALL}' \
  --prefix=%{_prefix} \
  --bindir=%{_bindir} \
  --libdir=%{_libdir} \
- --datadir=%{_datadir} \
+ --datadir=%{_datarootdir}/%{AppProgram} \
  --mandir=%{_mandir} \
  --enable-warnings \
  --enable-stdnoreturn \
@@ -58,13 +58,15 @@ strip $RPM_BUILD_ROOT%{_bindir}/%{AppProgram}
 
 %files
 %defattr(-,root,root)
-%{_bindir}/x+
 %{_bindir}/%{AppProgram}
-%{_datadir}/%{AppProgram}.hlp
+%{_datarootdir}/%{AppProgram}/%{AppProgram}.hlp
 %{_mandir}/man1/%{AppProgram}.*
 
 %changelog
 # each patch should add its ChangeLog entries here
+
+* Wed Dec 22 2021 Thomas Dickey
+- move ".hlp" file to subdirectory, omit "x+" from package
 
 * Sun Apr 01 2018 Thomas Dickey
 - update ftp url, add "x+" to package, suppress debug-symbols

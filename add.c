@@ -32,7 +32,7 @@ static const char copyrite[] = "Copyright 1994-2018,2021 by Thomas E. Dickey";
  *		move up and down in the column, modifying the values and
  *		operators.
  *
- * $Id: add.c,v 1.57 2021/03/24 19:19:01 tom Exp $
+ * $Id: add.c,v 1.59 2021/12/22 23:09:02 tom Exp $
  */
 
 #include <add.h>
@@ -653,7 +653,7 @@ ShowError(const char *msg, const char *arg)
     } else {
 	(void) fprintf(stderr, format, msg, arg);
 	(void) fprintf(stderr, "\n");
-	failed("add");
+	failed(ADD_PROGRAM);
     }
 }
 
@@ -1973,7 +1973,7 @@ PathLeaf(char *path)
 #endif
 
 #ifndef ADD_HELPFILE
-#define ADD_HELPFILE "add.hlp"
+#define ADD_HELPFILE ADD_PROGRAM ".hlp"
 #endif
 
 /*
@@ -2173,7 +2173,7 @@ usage(void)
 {
     static const char *tbl[] =
     {
-	"Usage: add [options] [scripts]"
+	"Usage: " ADD_PROGRAM " [options] [scripts]"
 	,""
 	,"Options:"
 	,"  -h           print this message"
@@ -2227,6 +2227,9 @@ main(int argc, char **argv)
     len_frac = 2;
     interval = 12;
 
+#ifdef LONG_MAX
+    big_long = LONG_MAX;
+#else
     /*
      * Compute the maximum number of digits to display:
      *
@@ -2240,6 +2243,7 @@ main(int argc, char **argv)
     big_long = k = 1;
     while ((k = (k << 1) + 1) > big_long)
 	big_long = k;
+#endif
 
     for (k = big_long, max_digits = 0; k >= 10; k /= 10)
 	max_digits++;
