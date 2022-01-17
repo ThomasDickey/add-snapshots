@@ -1,4 +1,12 @@
-$Id: CHANGES,v 1.53 2021/12/23 00:06:14 tom Exp $
+$Id: CHANGES,v 1.55 2022/01/17 12:28:04 tom Exp $
+
+2022/01/17
+----------
+	+ add locale support, prompted by discussion with Victor Westerhuis.
+
+	+ improve debian rules to use debhelper
+
+	+ improve run_test.sh to allow for renamed program as in Debian package
 
 2021/12/22
 ----------

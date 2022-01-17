@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2020,2021 by Thomas E. Dickey                               *
+ * Copyright 1995-2021,2022 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-/* $Id: add.h,v 1.18 2021/12/22 23:09:53 tom Exp $
+/* $Id: add.h,v 1.21 2022/01/17 13:10:10 tom Exp $
  *
  * common definitions for 'add' utility
  */
@@ -125,6 +125,10 @@
 #include	<signal.h>
 #include	<sys/types.h>
 #include	<sys/stat.h>
+
+#ifdef HAVE_LOCALECONV
+#include	<locale.h>
+#endif
 
 #if NEED_GETOPT_H
 #  include <getopt.h>
@@ -233,8 +237,6 @@ extern int optind;
 #define	R_PAREN	')'
 
 #define	EQUALS	'='
-#define	PERIOD	'.'
-#define	COMMA	','
 #define COLON   ':'
 
 #define	EOS	'\0'

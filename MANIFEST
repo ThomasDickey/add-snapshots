@@ -1,4 +1,4 @@
-MANIFEST for add, version t20211222
+MANIFEST for add, version t20220117
 --------------------------------------------------------------------------------
 MANIFEST                        this file
 CHANGES                         summary of changes to 'add'
@@ -24,7 +24,6 @@ package                         subdirectory
 package/add.spec                build-script for add
 package/debian                  subdirectory
 package/debian/changelog        debian build script
-package/debian/compat           debian build script
 package/debian/control          debian build script
 package/debian/copyright        debian build script
 package/debian/docs             debian build script

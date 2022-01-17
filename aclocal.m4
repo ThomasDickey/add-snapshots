@@ -1,9 +1,9 @@
-dnl $Id: aclocal.m4,v 1.36 2021/12/16 23:22:31 tom Exp $
+dnl $Id: aclocal.m4,v 1.38 2022/01/17 12:50:41 tom Exp $
 dnl autoconf macros for 'add'
 dnl
 dnl ---------------------------------------------------------------------------
 dnl
-dnl Copyright 2002-2020,2021 by Thomas E. Dickey
+dnl Copyright 2002-2021,2022 by Thomas E. Dickey
 dnl
 dnl                         All Rights Reserved
 dnl
@@ -1844,6 +1844,41 @@ fi
 CF_SUBDIR_PATH($1,$2,lib)
 
 $1="$cf_library_path_list [$]$1"
+])dnl
+dnl ---------------------------------------------------------------------------
+dnl CF_LOCALE version: 6 updated: 2021/01/02 09:31:20
+dnl ---------
+dnl Check if we have setlocale() and its header, <locale.h>
+dnl The optional parameter $1 tells what to do if we do have locale support.
+AC_DEFUN([CF_LOCALE],
+[
+AC_MSG_CHECKING(for setlocale())
+AC_CACHE_VAL(cf_cv_locale,[
+AC_TRY_LINK([#include <locale.h>],
+	[setlocale(LC_ALL, "")],
+	[cf_cv_locale=yes],
+	[cf_cv_locale=no])
+	])
+AC_MSG_RESULT($cf_cv_locale)
+test "$cf_cv_locale" = yes && { ifelse($1,,AC_DEFINE(LOCALE,1,[Define to 1 if we have locale support]),[$1]) }
+])dnl
+dnl ---------------------------------------------------------------------------
+dnl CF_LOCALECONV version: 1 updated: 2022/01/17 07:50:12
+dnl -------------
+dnl Check for localeconv, which should at a minimum support numbers.
+AC_DEFUN([CF_LOCALECONV],[
+AC_REQUIRE([CF_LOCALE])
+AC_CACHE_CHECK(for localeconv function,cf_cv_have_localeconv,[
+AC_TRY_LINK([
+#include <stdlib.h>
+#include <locale.h>],
+	[struct lconv *foo = localeconv();
+	 if (foo->decimal_point && foo->thousands_sep)
+	 exit(0)],
+	[cf_cv_have_localeconv=yes],
+	[cf_cv_have_localeconv=no])
+	])
+test "$cf_cv_have_localeconv" = yes && { ifelse($1,,AC_DEFINE(HAVE_LOCALECONV,1,[Define to 1 if we have localeconv support]),[$1]) }
 ])dnl
 dnl ---------------------------------------------------------------------------
 dnl CF_MAKE_DOCS version: 5 updated: 2021/01/10 16:05:11
