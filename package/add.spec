@@ -1,13 +1,13 @@
-Summary: add - full-screen editing calculator
+Summary: full-screen editing calculator
 %define AppProgram add
-%define AppVersion 20211222
-# $Id: add.spec,v 1.19 2021/12/22 23:56:38 tom Exp $
+%define AppVersion 20220117
+# $Id: add.spec,v 1.21 2022/01/17 13:18:28 tom Exp $
 Name: %{AppProgram}
 Version: %{AppVersion}
 Release: 1
 License: MIT
 Group: Applications/Development
-URL: ftp://ftp.invisible-island.net/%{AppProgram}
+URL: https://invisible-island.net/%{AppProgram}/
 Source0: %{AppProgram}-%{AppVersion}.tgz
 Packager: Thomas Dickey <dickey@invisible-island.net>
 

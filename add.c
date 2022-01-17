@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1994-2018,2021 by Thomas E. Dickey                               *
+ * Copyright 1994-2021,2022 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission to use, copy, modify, and distribute this software and its      *
@@ -19,7 +19,7 @@
  * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
  ******************************************************************************/
 
-static const char copyrite[] = "Copyright 1994-2018,2021 by Thomas E. Dickey";
+static const char copyrite[] = "Copyright 1994-2021,2022 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -32,7 +32,7 @@ static const char copyrite[] = "Copyright 1994-2018,2021 by Thomas E. Dickey";
  *		move up and down in the column, modifying the values and
  *		operators.
  *
- * $Id: add.c,v 1.59 2021/12/22 23:09:02 tom Exp $
+ * $Id: add.c,v 1.62 2022/01/17 13:10:07 tom Exp $
  */
 
 #include <add.h>
@@ -46,6 +46,8 @@ SSTACK {
     FILE *sfp;
     char **sscripts;
 };
+
+#define IsEmpty(s) ((s) == NULL || *(s) == '\0')
 
 #ifndef GCC_NORETURN
 #define GCC_NORETURN		/* nothing */
@@ -61,6 +63,8 @@ static void ShowFrom(DATA *);
 /*
  * Common data
  */
+static char sep_radix = '.';
+static char sep_group = ',';
 static const char *top_output;
 static DATA *all_data;		/* => beginning of data */
 static DATA *top_data;		/* => beginning of current screen */
@@ -145,17 +149,19 @@ isVisible(void)
 					return result; \
 			return 0; \
 			}
-
+/* *INDENT-OFF* */
 LOOKUP(isCommand, command, c)
 LOOKUP(isRepeats, repeats, Commands[j].command)
 LOOKUP(isToggles, toggles, Commands[j].command)
 LOOKUP(isUnary, command, Commands[j].isunary)
+/* *INDENT-ON* */
 
 /*
  * Find the end of the DATA list
  */
-     static
-     DATA *EndOfData(void)
+static
+DATA *
+EndOfData(void)
 {
     DATA *np;
     if ((np = all_data) != 0) {
@@ -408,11 +414,11 @@ Format(char *dst, Value val)
 		j += (int) grp;
 		s += grp;
 		if (j < len)
-		    *s++ = COMMA;
+		    *s++ = sep_group;
 	    }
 	    grp = 3;
 	}
-	(void) sprintf(s, ".%s", &bfr[len]);
+	(void) sprintf(s, "%c%s", sep_radix, &bfr[len]);
     }
     return (dst);
 }
@@ -894,7 +900,7 @@ GetScript(void)
 		    }
 		    first = FALSE;
 		}
-		if (isdigit(UCH(c)) || (c) == '.') {
+		if (isdigit(UCH(c)) || (c) == sep_radix) {
 		    valued = TRUE;
 		}
 		return (c);
@@ -1041,7 +1047,7 @@ doDeleteChar(char *buffer, int col, int limit)
 static int
 DecimalPoint(char *buffer)
 {
-    char *dot = strchr(buffer, PERIOD);
+    char *dot = strchr(buffer, sep_radix);
 
     if (dot != 0)
 	return (int) (dot - buffer);
@@ -1271,7 +1277,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	    for (c = 0; c < len_frac; c++, s--)
 		s[0] = s[-1];
 	    dot = len - len_frac;
-	    buffer[dot] = PERIOD;
+	    buffer[dot] = sep_radix;
 	}
 	if (isVisible()) {
 	    screen_set_position(row, (int) (editcols[0]
@@ -1303,7 +1309,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 */
 	if (np->cmd == R_PAREN) {
 	    if (isDigit(c)
-		|| (c == PERIOD)
+		|| (c == sep_radix)
 		|| (c == L_PAREN)) {
 		screen_alarm();
 	    } else {
@@ -1354,7 +1360,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	    if (UnaryConflict(np, c))
 		screen_alarm();
 	    else {
-		if (isDigit(c) || c == PERIOD) {
+		if (isDigit(c) || c == sep_radix) {
 		    old_digit = (char) c;
 		    c = OP_ADD;
 		}
@@ -1368,7 +1374,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 */
 	else if (isDigit(c)) {
 	    int limit = use_width;
-	    if (strchr(buffer, '.') == 0)
+	    if (strchr(buffer, sep_radix) == 0)
 		limit -= (1 + len_frac);
 	    if ((int) strlen(buffer) > limit)
 		screen_alarm();
@@ -1379,7 +1385,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 * Decimal point can be entered once for each number. If we
 	 * get another, simply move it to the new position.
 	 */
-	else if (c == PERIOD) {
+	else if (c == sep_radix) {
 	    int dot;
 	    if ((dot = DecimalPoint(buffer)) >= 0)
 		col = DeleteChar(buffer, dot, col, use_width);
@@ -1390,14 +1396,14 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 * next command, flushing out the current command.  Decode
 	 * the number (if any) which we have read:
 	 */
-	else if (c != COMMA) {
+	else if (c != sep_group) {
 	    if (*buffer != EOS) {
 		int len = (char) strlen(buffer);
 		int dot;
 		Value cents;
 
 		if ((dot = DecimalPoint(buffer)) < 0)
-		    buffer[dot = len++] = PERIOD;
+		    buffer[dot = len++] = sep_radix;
 		while ((len - dot) <= len_frac)
 		    buffer[len++] = '0';
 		len = dot + 1 + len_frac;	/* truncate */
@@ -1406,7 +1412,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 		if (dot) {
 		    buffer[dot] = EOS;
 		    (void) sscanf(buffer, "%lf", val_);
-		    buffer[dot] = PERIOD;
+		    buffer[dot] = sep_radix;
 		    *val_ *= val_frac;
 		} else
 		    *val_ = 0.0;
@@ -2227,6 +2233,18 @@ main(int argc, char **argv)
     len_frac = 2;
     interval = 12;
 
+#ifdef HAVE_LOCALECONV
+    if (setlocale(LC_ALL, "") != NULL) {
+	struct lconv *data = localeconv();
+	if (data != NULL) {
+	    if (!IsEmpty(data->decimal_point))
+		sep_radix = *data->decimal_point;
+	    if (!IsEmpty(data->thousands_sep))
+		sep_group = *data->thousands_sep;
+	}
+    }
+#endif
+
 #ifdef LONG_MAX
     big_long = LONG_MAX;
 #else
@@ -2250,7 +2268,7 @@ main(int argc, char **argv)
 
     FindHelp(argv[0]);
 
-    while ((j = getopt(argc, argv, "hi:o:p:V")) != EOF)
+    while ((j = getopt(argc, argv, "hi:o:p:V")) != -1)
 	switch (j) {
 	case 'p':
 	    if ((sscanf(optarg, "%d%c", &len_frac, &tmp) != 1)

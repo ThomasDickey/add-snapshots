@@ -1,13 +1,14 @@
 #!/bin/sh
-# $Id: run_test.sh,v 1.10 2010/07/08 21:07:57 tom Exp $
+# $Id: run_test.sh,v 1.14 2022/01/17 13:00:35 tom Exp $
 # regression script for 'add'
 if test $# = 0
 then
-	eval $0 *.add
+	eval "$0" ./*.add
 	exit
 fi
 #
 PATH=`cd ..;pwd`:$PATH; export PATH
+: "${PROGRAM:=add}"
 #
 CASE64=`file ../add 2>/dev/null | fgrep 64-bit`
 #
@@ -17,12 +18,17 @@ rm -f un*ble
 touch unwritable unreadable
 chmod 444 unwritable
 chmod 000 unreadable
-trap "rm -f un*ble" 0 1 2 5 15
+trap "rm -f un*ble" EXIT INT QUIT HUP TERM
+#
+# test references are for POSIX locale...
+unset LANG
+unset LC_ALL
+unset LC_CTYPE
 #
 EXIT=0
-for i in $*
+for i in "$@"
 do
-	I=`basename $i .add`
+	I=`basename "$i" .add`
 	NUL=/dev/null
 	OUT="$I.out"
 	ERR="$I.err"
@@ -33,55 +39,61 @@ do
 	then
 		test -f "$I-64.ref" && REF="$I-64.ref"
 	fi
-	if test -f $I.opt
+	if test -f "$I".opt
 	then
-		OPT=`cat $I.opt`
+		OPT=`cat "$I".opt`
 	fi
-	rm -f $OUT $ERR $TMP
+	rm -f "$OUT" "$ERR" "$TMP"
 	# Build a script that's guaranteed to write an output. Some curses
 	# implementations don't allow us to simply pipe to the application.
-	cp $I.add $TMP
-	chmod 644 $TMP
-	echo ':w' >>$TMP
-	echo 'Q'  >>$TMP
-	add $OPT -o $OUT $TMP >$NUL 2>$ERR
-	rm -f $TMP
-	if test -f $ERR
-	then
-		if ( fgrep 'Electric Fence' $ERR >/dev/null )
-		then
-			cat $ERR \
-				| sed -e '1,/Electric Fence/d' \
-				| tr '\007' @ \
-				| sed -e 's/@//g' \
-				>>$OUT
-		else
-			cat $ERR \
-				| tr '\007' @ \
-				| sed -e 's/@//g' \
-				>>$OUT
-		fi
-		rm -f $ERR
+	cp "$I".add "$TMP"
+	chmod 644 "$TMP"
+	echo ':w' >>"$TMP"
+	echo 'Q'  >>"$TMP"
+
+	add $OPT -o "$OUT" "$TMP" >"$NUL" 2>"$ERR"
+
+	if test -s "$ERR"; then
+		sed -e "s/: \<$PROGRAM\>/: add/" "$ERR" >"$TMP"
+		mv "$TMP" "$ERR"
 	fi
-	if test -f $OUT
+	rm -f "$TMP"
+
+	if test -s "$ERR"
 	then
-		if test -f $REF
+		if ( fgrep 'Electric Fence' "$ERR" >/dev/null )
 		then
-			if ( cmp -s $OUT $REF )
+			sed -e '1,/Electric Fence/d' \
+				| tr '\007' @ \
+				| sed -e 's/@//g' <"$ERR" \
+				>>"$OUT"
+		else
+			tr '\007' @ <"$ERR" \
+				| sed -e 's/@//g' \
+				>>"$OUT"
+		fi
+	fi
+	rm -f "$ERR"
+
+	if test -f "$OUT"
+	then
+		if test -f "$REF"
+		then
+			if ( cmp -s "$OUT" "$REF" )
 			then
-				echo '** ok: '$I
-				rm -f $OUT
+				echo "** ok: $I"
+				rm -f "$OUT"
 			else
-				echo '?? fail: '$I
-				diff $REF $OUT 
+				echo "?? fail: $I"
+				diff "$REF" "$OUT"
 				EXIT=1
 			fi
 		else
-			echo '...saving '$REF
-			mv $OUT $REF
+			echo "...saving $REF"
+			mv "$OUT" "$REF"
 		fi
 	else
-		echo '? no output for '$I
+		echo "? no output for $I"
 		exit 1
 	fi
 done
