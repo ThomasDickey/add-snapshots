@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: run_test.sh,v 1.14 2022/01/17 13:00:35 tom Exp $
+# $Id: run_test.sh,v 1.15 2022/11/04 21:45:18 tom Exp $
 # regression script for 'add'
 if test $# = 0
 then
@@ -10,7 +10,7 @@ fi
 PATH=`cd ..;pwd`:$PATH; export PATH
 : "${PROGRAM:=add}"
 #
-CASE64=`file ../add 2>/dev/null | fgrep 64-bit`
+CASE64=`file ../add 2>/dev/null | grep 64-bit`
 #
 LINES=24;export LINES
 COLS=80;export COLS
@@ -61,7 +61,7 @@ do
 
 	if test -s "$ERR"
 	then
-		if ( fgrep 'Electric Fence' "$ERR" >/dev/null )
+		if ( grep 'Electric Fence' "$ERR" >/dev/null )
 		then
 			sed -e '1,/Electric Fence/d' \
 				| tr '\007' @ \

@@ -1,4 +1,12 @@
-$Id: CHANGES,v 1.55 2022/01/17 12:28:04 tom Exp $
+$Id: CHANGES,v 1.58 2022/11/04 23:48:45 tom Exp $
+
+2022/11/04
+----------
+	+ fixes per cppcheck and clang --analyze.
+
+	+ updated configure script to work around regression in grep 3.8.
+
+	+ update config.guess, config.sub, install-sh
 
 2022/01/17
 ----------

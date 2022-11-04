@@ -32,7 +32,7 @@ static const char copyrite[] = "Copyright 1994-2021,2022 by Thomas E. Dickey";
  *		move up and down in the column, modifying the values and
  *		operators.
  *
- * $Id: add.c,v 1.62 2022/01/17 13:10:07 tom Exp $
+ * $Id: add.c,v 1.65 2022/11/04 23:47:36 tom Exp $
  */
 
 #include <add.h>
@@ -57,7 +57,6 @@ static GCC_NORETURN void usage(void);
 static GCC_NORETURN void failed(const char *);
 
 static void Recompute(DATA *);
-static void ShowRange(DATA *, DATA *);
 static void ShowFrom(DATA *);
 
 /*
@@ -214,7 +213,11 @@ TrimString(char *src)
 static char *
 AllocString(const char *src)
 {
-    return strcpy(malloc((strlen(src) + 1)), src);
+    char *result = strdup(src);
+    size_t len = strlen(result);
+    while (len != 0 && isspace((unsigned char) (result[--len])))
+	result[len] = '\0';
+    return result;
 }
 
 /*
@@ -391,8 +394,7 @@ LastVAL(const DATA * np, int cmd)
 static char *
 Format(char *dst, Value val)
 {
-    int len, j, neg = val < 0.0;
-    size_t grp;
+    int neg = val < 0.0;
     char bfr[MAXBFR], *s = dst;
 
     if (neg) {
@@ -403,6 +405,10 @@ Format(char *dst, Value val)
     if (val >= big_long) {
 	(void) strcpy(s, " ** overflow");
     } else {
+	int len;
+	int j;
+	size_t grp;
+
 	(void) sprintf(bfr, "%0*.0f", len_frac, val);
 	len = (int) strlen(bfr) - len_frac;
 	grp = (size_t) (len % 3);
@@ -493,12 +499,11 @@ ShowValue(DATA * np, int *editing, Bool comment)
     int col = 0;
     int level;
 
-    if (!isVisible()) {
-	if (editing != 0) {
-	    editing[0] =
-		editing[1] = 0;
-	}
-    } else if (row >= 0 && row < screen_full) {
+    if (editing != 0) {
+	editing[0] =
+	    editing[1] = 0;
+    }
+    if (isVisible() && row >= 0 && row < screen_full) {
 	char cmd = (char) (isprint(UCH(np->cmd)) ? np->cmd : '?');
 
 	screen_set_position(row + 1, col);
@@ -588,24 +593,27 @@ ShowStatus(DATA * np, int opened)
     int seq = CountData(np);
     int top = CountData(top_data);
     DATA *last = EndOfData();
-    unsigned j;
-    int c;
-    char buffer[BUFSIZ];
 
     if (!show_error && np != 0 && isVisible()) {
+	char buffer[BUFSIZ];
+
 	screen_set_bold(TRUE);
 	screen_set_position(0, 0);
 	screen_clear_endline();
+
 	(void) sprintf(buffer, "%d of %d", seq, CountData(last));
+
 	screen_set_position(0, screen_cols_left((int) strlen(buffer)));
 	screen_puts(buffer);
 	screen_set_position(0, 0);
+
 	if (opened < 0) {
 	    screen_puts("Edit comment (press return to exit)");
 	} else if (opened > 0) {
+	    unsigned j;
 	    screen_puts("Open-line expecting operator ");
 	    for (j = 0; j < SIZEOF(Commands); j++) {
-		c = Commands[j].command;
+		int c = Commands[j].command;
 		if (!isUnary(c) && FirstData(np))
 		    continue;
 		if ((c = Commands[j].command) == L_PAREN)
@@ -616,6 +624,7 @@ ShowStatus(DATA * np, int opened)
 	    }
 	    screen_puts(" or oO to cancel");
 	} else if (np->cmd != EOS) {	/* editing a value */
+	    unsigned j;
 	    for (j = 0; j < SIZEOF(Commands); j++) {
 		if (Commands[j].command == np->cmd) {
 		    screen_printf("  %s", Commands[j].explain);
@@ -954,16 +963,15 @@ GetC(void)
 static int
 DeleteChar(char *buffer, int offset, int pos, int limit)
 {
-    int y, x, col;
     char *t;
 
     /* delete from the actual buffer */
     for (t = buffer + offset; (t[0] = t[1]) != EOS; t++) ;
 
     if (isVisible()) {		/* update the display */
-	y = screen_row();
-	x = screen_col();	/* get current insert-position */
-	col = x - pos + offset;	/* assume pos < len, offset < len */
+	int y = screen_row();
+	int x = screen_col();	/* get current insert-position */
+	int col = x - pos + offset;	/* assume pos < len, offset < len */
 	screen_set_position(y, col);
 	screen_delete_char();
 	if (limit > 0 && (int) strlen(buffer) < limit) {
@@ -988,7 +996,6 @@ DeleteChar(char *buffer, int offset, int pos, int limit)
 static int
 InsertChar(char *buffer, int chr, int pos, int lmargin, int rmargin, int *offset)
 {
-    int y, x;
     int len = (int) strlen(buffer);
     char *t;
 
@@ -1001,8 +1008,8 @@ InsertChar(char *buffer, int chr, int pos, int lmargin, int rmargin, int *offset
     t[0] = (char) chr;
 
     if (isVisible()) {		/* update the display on the screen */
-	y = screen_row();
-	x = screen_col();
+	int y = screen_row();
+	int x = screen_col();
 	if (screen_cols_left(x) > 0) {
 	    if (rmargin > 0) {
 		x--;
@@ -1119,7 +1126,7 @@ repaint_screen(DATA * np)
 static void
 EditBuffer(char *buffer, int length, DATA * np)
 {
-    int end, chr;
+    int end;
     int col = (int) strlen(buffer);
     int done = FALSE;
     int offset;
@@ -1128,6 +1135,8 @@ EditBuffer(char *buffer, int length, DATA * np)
 
     init_editor(buffer, length, &end, &offset, &lmargin);
     while (!done) {
+	int chr;
+
 	while (col - offset < 0) {
 	    offset--;
 	    shown = FALSE;
@@ -1545,7 +1554,6 @@ OpenLine(DATA * base, int after, int *repeated, int *edit)
     DATA *save_top = top_data;
     DATA *op = after ? base : base->prev;
     DATA *np;
-    int chr;
     int this_row;
     int done = FALSE;
     int nested;
@@ -1577,7 +1585,7 @@ OpenLine(DATA * base, int after, int *repeated, int *edit)
     *edit = FALSE;		/* assume we'll get some new data */
 
     while (!done) {
-	chr = GetC();
+	int chr = GetC();
 	if (UnaryConflict(np, chr)) {
 	    screen_alarm();
 	    continue;
@@ -1889,16 +1897,15 @@ ScreenMovement(DATA ** pp, int chr)
 static void
 ShowHelp(void)
 {
-    FILE *fp;
     DATA *save_data = all_data;
     DATA *save_top = top_data;
     DATA *np = 0;
-    int chr;
     int end;
     int done = FALSE;
     char buffer[BUFSIZ];
 
     if ((all_data = all_help) == 0) {
+	FILE *fp;
 
 	np = AllocData((DATA *) 0);	/* header line not shown */
 
@@ -1922,16 +1929,21 @@ ShowHelp(void)
     ShowFrom(all_data);
 
     while (!done) {
+	int chr;
+
 	screen_set_position(0, 0);
 	screen_set_bold(TRUE);
 	screen_clear_endline();
+
 	(void) sprintf(buffer, "line %d of %d", CountData(np), end);
 	screen_set_position(0, screen_cols_left((int) strlen(buffer)));
 	screen_puts(buffer);
+
 	screen_set_position(0, 0);
 	screen_printf("ADD %s -- %s -- ", RELEASE, copyrite);
 	screen_set_bold(FALSE);
 	screen_set_position(CountFromTop(np) + 1, 0);
+
 	chr = GetC();
 	if (chr == 'q' || chr == 'Q') {
 	    done = TRUE;
@@ -2013,10 +2025,12 @@ FindHelp(const char *program)
 	s = PathLeaf(temp);
     } else {
 	const char *path = getenv("PATH");
-	int j = 0, k, l;
+	int j = 0, k;
+
 	if (path == 0)
 	    path = "";
 	while (path[j] != EOS) {
+	    int l;
 	    for (k = j; path[k] != EOS && path[k] != PATHSEP; k++)
 		temp[k - j] = path[k];
 	    if ((l = k - j) != 0)
@@ -2050,14 +2064,13 @@ Loop(void)
     DATA *np = EndOfData();
     Value val;
     int test_c;
-    int chr;
     int len;
     int opened;
     int repeated;		/* if true, 'Loop' assumes editable value */
     int edit = FALSE;
 
     for (;;) {
-	chr = EditValue(np, &len, &val, edit);
+	int chr = EditValue(np, &len, &val, edit);
 	switch (chr) {
 	case '\t':
 	    chr = EQUALS;
