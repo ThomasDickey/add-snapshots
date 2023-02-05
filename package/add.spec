@@ -1,7 +1,7 @@
 Summary: full-screen editing calculator
 %define AppProgram add
-%define AppVersion 20221104
-# $Id: add.spec,v 1.22 2022/11/04 21:14:06 tom Exp $
+%define AppVersion 20230205
+# $Id: add.spec,v 1.23 2023/02/05 13:28:41 tom Exp $
 Name: %{AppProgram}
 Version: %{AppVersion}
 Release: 1

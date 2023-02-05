@@ -1,4 +1,8 @@
-$Id: CHANGES,v 1.58 2022/11/04 23:48:45 tom Exp $
+$Id: CHANGES,v 1.59 2023/02/05 13:28:41 tom Exp $
+
+2023/02/05
+----------
+	+ updated configure script to reduce compiler-warnings in checks.
 
 2022/11/04
 ----------

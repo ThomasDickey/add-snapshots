@@ -1,8 +1,8 @@
-# $Id: makefile.in,v 1.45 2022/11/04 21:14:06 tom Exp $
+# $Id: makefile.in,v 1.46 2023/02/05 13:28:41 tom Exp $
 # Makefile-template for 'add'
 
 THIS		= add
-RELEASE		= t20221104
+RELEASE		= t20230205
 SCREEN		= curses
 
 #### Start of system configuration section. ####
