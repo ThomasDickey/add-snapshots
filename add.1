@@ -1,5 +1,5 @@
 .\"/****************************************************************************
-.\" Copyright 1995-2020,2022 by Thomas E. Dickey                               *
+.\" Copyright 1995-2022,2024 by Thomas E. Dickey                               *
 .\" All Rights Reserved.                                                       *
 .\"                                                                            *
 .\" Permission to use, copy, modify, and distribute this software and its      *
@@ -18,7 +18,13 @@
 .\" ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR *
 .\" IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
 .\" ***************************************************************************/
-.\" $Id: add.1,v 1.10 2022/11/04 23:37:26 tom Exp $
+.\" $Id: add.1,v 1.11 2024/01/10 21:59:30 tom Exp $
+.TH ADD 1 2024-01-10 "" "User commands"
+.ie n .ds CW R
+.el   \{
+.ie \n(.g .ds CW CR
+.el       .ds CW CW
+.\}
 .de NE
 .fi
 .ft R
@@ -31,20 +37,16 @@
 .ie n  .in +4
 .el    .in +2
 .nf
-.ft C			\" Courier
+.ft \*(CW
 ..
 .
-.TH ADD 1
 .hy 0
 .
 .SH NAME
-\fBadd\fR \- full-screen editing calculator
-.
-.SH USAGE
-\fBadd\fI [options] [file-specifications]\fR
-.
+\fBadd\fR \-
+full-screen editing calculator
 .SH SYNOPSIS
-\fBAdd\fR is a fixed-point calculator that operates as a full-screen editor.
+\fBadd\fI [options] [file-specifications]\fR
 .
 .SH DESCRIPTION
 \fBAdd\fR performs fixed-point computation.
@@ -76,7 +78,7 @@ Sets precision (number of digits after the decimal place).
 .
 .SH OPERATIONS
 .
-.SS Computations:
+.SS "Computations:"
 .
 The operators are all single-character:
 .
@@ -173,7 +175,7 @@ toggles the operator to '%'.
 .B "T"
 toggles the operator to '$'.
 .
-.SS Editing:
+.SS "Editing:"
 .
 As you enter data, you may edit it.
 A backspace deletes the last digit
@@ -213,7 +215,7 @@ In either case, you may edit the new data, just as you would the old data.
 A 'u' (or other toggle, such as 'o', 'O', or 'q') typed after an open
 will undo the open (and close it).
 .
-.SS Scrolling/cursor movement:
+.SS "Scrolling/cursor movement:"
 .
 .TP
 .B H
@@ -257,7 +259,7 @@ jumps to the last entry
 .B :1
 jumps to the first entry.
 .
-.SS Scripts:
+.SS "Scripts:"
 .
 Transcript files are formatted to permit line-oriented entries:
 .
@@ -294,15 +296,14 @@ writes a script to the specified file.
 \fBAdd\fR is a single binary module, with a help file \fBadd.hlp\fR
 installed in the same directory.
 .
-.SH FUTURE WORK
+.SH BUGS
 It would be nice to be able to change the precision within the program.
 In particular, the interest and sales tax computations would be more
 useful if their precision was independent of the running total.
 .
-.SH AUTHOR
+.SH AUTHORS
 Thomas E. Dickey
 .
 .SH SEE ALSO
-.PP
-wc\ (1),
-vi\ (1)
+\fBwc\fP(1),
+\fBvi\fP(1)
