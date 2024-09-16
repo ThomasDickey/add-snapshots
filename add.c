@@ -1,25 +1,32 @@
 /******************************************************************************
- * Copyright 1994-2021,2022 by Thomas E. Dickey                               *
+ * Copyright 1995-2022,2024 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
- * Permission to use, copy, modify, and distribute this software and its      *
- * documentation for any purpose and without fee is hereby granted, provided  *
- * that the above copyright notice appear in all copies and that both that    *
- * copyright notice and this permission notice appear in supporting           *
- * documentation, and that the name of the above listed copyright holder(s)   *
- * not be used in advertising or publicity pertaining to distribution of the  *
- * software without specific, written prior permission.                       *
+ * Permission is hereby granted, free of charge, to any person obtaining a    *
+ * copy of this software and associated documentation files (the "Software"), *
+ * to deal in the Software without restriction, including without limitation  *
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,   *
+ * and/or sell copies of the Software, and to permit persons to whom the      *
+ * Software is furnished to do so, subject to the following conditions:       *
  *                                                                            *
- * THE ABOVE LISTED COPYRIGHT HOLDER(S) DISCLAIM ALL WARRANTIES WITH REGARD   *
- * TO THIS SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND  *
- * FITNESS, IN NO EVENT SHALL THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE  *
- * FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES          *
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN      *
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR *
- * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.                *
+ * The above copyright notice and this permission notice shall be included in *
+ * all copies or substantial portions of the Software.                        *
+ *                                                                            *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR *
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,   *
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL   *
+ * THE ABOVE LISTED COPYRIGHT HOLDER(S) BE LIABLE FOR ANY CLAIM, DAMAGES OR   *
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,      *
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR      *
+ * OTHER DEALINGS IN THE SOFTWARE.                                            *
+ *                                                                            *
+ * Except as contained in this notice, the name(s) of the above copyright     *
+ * holders shall not be used in advertising or otherwise to promote the sale, *
+ * use or other dealings in this Software without prior written               *
+ * authorization.                                                             *
  ******************************************************************************/
 
-static const char copyrite[] = "Copyright 1994-2021,2022 by Thomas E. Dickey";
+static const char copyrite[] = "Copyright 1994-2022,2024 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -32,7 +39,7 @@ static const char copyrite[] = "Copyright 1994-2021,2022 by Thomas E. Dickey";
  *		move up and down in the column, modifying the values and
  *		operators.
  *
- * $Id: add.c,v 1.65 2022/11/04 23:47:36 tom Exp $
+ * $Id: add.c,v 1.71 2024/09/16 21:21:41 tom Exp $
  */
 
 #include <add.h>
@@ -85,6 +92,9 @@ static FILE *scriptFP;		/* current script file-pointer */
 static char **scriptv;		/* pointer to list of input-scripts */
 static Bool scriptCHG;		/* set true if there's a change after scripts */
 static Bool scriptNUM;		/* set true to 0..n for script number */
+static Bool had_error;		/* errors in script hint at the wrong file */
+static int scriptLine;		/* line number in current script */
+static int scriptErrs;		/* count successive errors */
 
 /*
  * Help-screen
@@ -124,6 +134,13 @@ failed(const char *msg)
     screen_finish();
     perror(msg);
     exit(EXIT_FAILURE);
+}
+
+static void
+HadError(void)
+{
+    had_error = TRUE;
+    screen_alarm();
 }
 
 /*
@@ -838,6 +855,8 @@ ReadScript(void)
 	c = ReadScript();
 	if (c == EOF)
 	    c = '^';		/* we'll get an EOF on the next call */
+	else if (c == '\n')
+	    scriptLine++;
 	else if (c == '?')
 	    c = '\177';		/* delete */
 	else
@@ -845,6 +864,8 @@ ReadScript(void)
     }
     return c;
 }
+
+#define IsScript() (scriptv != NULL && *scriptv != NULL)
 
 /*
  * As long as there is another input-script to process, read it.  Scripts are
@@ -861,7 +882,7 @@ GetScript(void)
     static int comment;
     int c;
 
-    while (scriptv != 0 && *scriptv != 0) {
+    while (IsScript()) {
 	int was_invisible = !isVisible();
 
 	if (scriptFP == 0) {
@@ -873,6 +894,8 @@ GetScript(void)
 		ShowInfo("Reading script");
 		first = TRUE;
 		valued = FALSE;
+		scriptLine = 1;
+		scriptErrs = 0;
 	    }
 	    continue;
 	}
@@ -949,6 +972,18 @@ GetC(void)
 {
     int c;
 
+    if (IsScript()) {
+	if (had_error) {
+	    had_error = FALSE;
+	    if (++scriptErrs >= 3) {
+		screen_finish();
+		fprintf(stderr, "%s:%d: invalid input\n", *scriptv, scriptLine);
+		exit(EXIT_FAILURE);
+	    }
+	} else {
+	    scriptErrs = 0;
+	}
+    }
     if ((c = GetScript()) == EOS) {
 	show_error = FALSE;
 	c = screen_getc();
@@ -1027,7 +1062,7 @@ InsertChar(char *buffer, int chr, int pos, int lmargin, int rmargin, int *offset
 	    screen_set_position(y, x);
 	    *offset += 1;
 	} else {
-	    screen_alarm();
+	    HadError();
 	}
     }
     return pos + 1;
@@ -1042,7 +1077,7 @@ doDeleteChar(char *buffer, int col, int limit)
     if (col > 0) {
 	col = DeleteChar(buffer, col - 1, col, limit);
     } else {
-	screen_alarm();
+	HadError();
     }
     return col;
 }
@@ -1160,10 +1195,11 @@ EditBuffer(char *buffer, int length, DATA * np)
 	if (isReturn(chr)) {
 	    done = TRUE;
 	} else if (isAscii(chr) && isprint(UCH(chr))) {
-	    if ((int) strlen(buffer) < length - 1)
+	    if ((int) strlen(buffer) < length - 1) {
 		col = InsertChar(buffer, chr, col, lmargin, 0, &offset);
-	    else
-		screen_alarm();
+	    } else {
+		HadError();
+	    }
 	} else if (chr == CTL('L')) {
 	    init_editor(buffer, length, &end, &offset, &lmargin);
 	    repaint_screen(np);
@@ -1180,7 +1216,7 @@ EditBuffer(char *buffer, int length, DATA * np)
 	    while (col < (int) strlen(buffer))
 		col = screen_move_right(col, (int) strlen(buffer));
 	} else {
-	    screen_alarm();
+	    HadError();
 	}
     }
 }
@@ -1320,7 +1356,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	    if (isDigit(c)
 		|| (c == sep_radix)
 		|| (c == L_PAREN)) {
-		screen_alarm();
+		HadError();
 	    } else {
 		*len_ = -2;
 		done = TRUE;
@@ -1355,7 +1391,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 */
 	else if (c == L_PAREN) {
 	    if (*buffer != EOS) {
-		screen_alarm();
+		HadError();
 	    } else {
 		col = InsertChar(buffer, c, col, lmargin, use_width, (int *) 0);
 		nesting = TRUE;
@@ -1367,7 +1403,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 */
 	else if (nesting) {
 	    if (UnaryConflict(np, c))
-		screen_alarm();
+		HadError();
 	    else {
 		if (isDigit(c) || c == sep_radix) {
 		    old_digit = (char) c;
@@ -1385,10 +1421,11 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	    int limit = use_width;
 	    if (strchr(buffer, sep_radix) == 0)
 		limit -= (1 + len_frac);
-	    if ((int) strlen(buffer) > limit)
-		screen_alarm();
-	    else
+	    if ((int) strlen(buffer) > limit) {
+		HadError();
+	    } else {
 		col = InsertChar(buffer, c, col, lmargin, use_width, (int *) 0);
+	    }
 	}
 	/*
 	 * Decimal point can be entered once for each number. If we
@@ -1587,7 +1624,7 @@ OpenLine(DATA * base, int after, int *repeated, int *edit)
     while (!done) {
 	int chr = GetC();
 	if (UnaryConflict(np, chr)) {
-	    screen_alarm();
+	    HadError();
 	    continue;
 	}
 	switch (chr) {
@@ -1641,7 +1678,8 @@ OpenLine(DATA * base, int after, int *repeated, int *edit)
 	    *edit = TRUE;	/* go back to the original */
 	    break;
 	default:
-	    screen_alarm();
+	    HadError();
+	    continue;
 	}
     }
     return (np);
@@ -1805,7 +1843,7 @@ ColonCommand(DATA * np)
 		show_scripts = TRUE;
 		break;
 	    default:
-		screen_alarm();
+		HadError();
 	    }
 	}
     }
@@ -1948,7 +1986,7 @@ ShowHelp(void)
 	if (chr == 'q' || chr == 'Q') {
 	    done = TRUE;
 	} else if (!ScreenMovement(&np, chr)) {
-	    screen_alarm();
+	    HadError();
 	}
     }
 
@@ -2109,12 +2147,12 @@ Loop(void)
 	    if (HasData(np))
 		edit = TRUE;
 	    else
-		screen_alarm();
+		HadError();
 	} else if ((test_c = isToggles(chr)) != EOS) {
 	    /* C: toggle current operator */
 	    chr = test_c;
 	    if (UnaryConflict(np, chr)) {
-		screen_alarm();
+		HadError();
 	    } else {
 		if (len == 0)
 		    val = np->val;
@@ -2174,7 +2212,7 @@ Loop(void)
 		} else if (chr == EQUALS) {
 		    Recompute(np);
 		} else {
-		    screen_alarm();
+		    HadError();
 		}
 	    }
 	    if (repeated) {

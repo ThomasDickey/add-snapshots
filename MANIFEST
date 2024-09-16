@@ -1,4 +1,4 @@
-MANIFEST for add, version t20240110
+MANIFEST for add, version t20240916
 --------------------------------------------------------------------------------
 MANIFEST                        this file
 CHANGES                         summary of changes to 'add'
@@ -28,10 +28,9 @@ package/debian/control          debian build script
 package/debian/copyright        debian build script
 package/debian/docs             debian build script
 package/debian/rules            debian build script
+package/debian/watch            debian build script
 package/debian/source           subdirectory
 package/debian/source/format    debian build script
-package/debian                  subdirectory
-package/debian/watch            debian build script
 porting                         subdirectory
 porting/descrip.mms             VMS build-script for "add"
 porting/vms_link.opt            VMS link-options for "add"
