@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2020,2024 by Thomas E. Dickey                               *
+ * Copyright 1995-2024,2025 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission is hereby granted, free of charge, to any person obtaining a    *
@@ -34,7 +34,7 @@
  *
  * Function:	This module hides the curses functional interface from 'add'
  *
- * $Id: curses.c,v 1.22 2024/09/16 00:02:27 tom Exp $
+ * $Id: curses.c,v 1.23 2025/09/14 00:12:27 tom Exp $
  */
 
 #include <add.h>
@@ -488,7 +488,7 @@ screen_set_reverse(Bool flag)
 void
 screen_start(void)
 {
-    if (initscr() == 0)		/* should return a "WINDOW *" */
+    if (initscr() == NULL)	/* should return a "WINDOW *" */
 	exit(EXIT_FAILURE);
 #if HAVE_KEYPAD
     keypad(stdscr, TRUE);

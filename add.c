@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2022,2024 by Thomas E. Dickey                               *
+ * Copyright 1995-2024,2025 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission is hereby granted, free of charge, to any person obtaining a    *
@@ -26,7 +26,7 @@
  * authorization.                                                             *
  ******************************************************************************/
 
-static const char copyrite[] = "Copyright 1994-2022,2024 by Thomas E. Dickey";
+static const char copyrite[] = "Copyright 1994-2024,2025 by Thomas E. Dickey";
 
 /*
  * Title:	add.c
@@ -39,7 +39,7 @@ static const char copyrite[] = "Copyright 1994-2022,2024 by Thomas E. Dickey";
  *		move up and down in the column, modifying the values and
  *		operators.
  *
- * $Id: add.c,v 1.71 2024/09/16 21:21:41 tom Exp $
+ * $Id: add.c,v 1.72 2025/09/14 00:12:09 tom Exp $
  */
 
 #include <add.h>
@@ -150,7 +150,7 @@ HadError(void)
 static int
 isVisible(void)
 {
-    return show_scripts || (scriptFP == 0);
+    return show_scripts || (scriptFP == NULL);
 }
 
 /*
@@ -180,7 +180,7 @@ DATA *
 EndOfData(void)
 {
     DATA *np;
-    if ((np = all_data) != 0) {
+    if ((np = all_data) != NULL) {
 	while (!LastData(np))
 	    np = np->next;
     }
@@ -194,7 +194,7 @@ EndOfData(void)
 static int
 FirstData(DATA * np)
 {
-    return (np->prev == 0 || np->prev == all_data);
+    return (np->prev == NULL || np->prev == all_data);
 }
 
 /*
@@ -245,12 +245,12 @@ AllocData(DATA * after)
 {
     DATA *np = SALLOC(DATA);
 
-    if (np == 0)
+    if (np == NULL)
 	failed("AllocData");
 
-    assert(np != 0);
+    assert(np != NULL);
 
-    np->txt = 0;
+    np->txt = NULL;
     np->val =
 	np->sum =
 	np->aux = 0.0;
@@ -258,9 +258,9 @@ AllocData(DATA * after)
     np->psh = FALSE;
     np->dot = len_frac;
     np->next =
-	np->prev = 0;
+	np->prev = NULL;
 
-    if (after != 0) {
+    if (after != NULL) {
 	np->prev = after;
 	np->next = after->next;
 	after->next = np;
@@ -268,7 +268,7 @@ AllocData(DATA * after)
 	    np->next->prev = np;
     } else {			/* append to the end of the list */
 	DATA *op = EndOfData();
-	if (op != 0) {
+	if (op != NULL) {
 	    op->next = np;
 	    np->prev = op;
 	} else {
@@ -288,19 +288,19 @@ FreeData(DATA * np, int permanent)
     DATA *prev = np->prev;
     DATA *next = np->next;
 
-    if (prev == 0) {		/* we're at the beginning of the list */
+    if (prev == NULL) {		/* we're at the beginning of the list */
 	all_data = next;
-	if (next != 0)
-	    next->prev = 0;
+	if (next != NULL)
+	    next->prev = NULL;
     } else {
 	prev->next = next;
-	if (next != 0) {
+	if (next != NULL) {
 	    next->prev = prev;
 	} else {		/* deleted the end-of-data */
 	    next = prev;
 	}
     }
-    if (np->txt != 0)
+    if (np->txt != NULL)
 	free(np->txt);
     free((char *) np);
 
@@ -324,7 +324,7 @@ static int
 CountData(DATA * np)
 {
     int seq = 0;
-    while (np != 0 && np->prev != 0) {
+    while (np != NULL && np->prev != NULL) {
 	seq++;
 	np = np->prev;
     }
@@ -348,7 +348,7 @@ FindData(int seq)
 {
     DATA *np = all_data;
     while (seq-- > 0) {
-	if (np == 0)
+	if (np == NULL)
 	    break;
 	np = np->next;
     }
@@ -392,7 +392,7 @@ static Value
 LastVAL(const DATA * np, int cmd)
 {
     np = np->prev;
-    while (np != 0) {
+    while (np != NULL) {
 	if (cmd == np->cmd)
 	    return (np->val);
 	np = np->prev;
@@ -477,7 +477,7 @@ LevelOf(const DATA * target)
     DATA *np;
     int level = 0;
 
-    for (np = all_data; np != 0 && np != target; np = np->next) {
+    for (np = all_data; np != NULL && np != target; np = np->next) {
 	if (np->cmd == R_PAREN)
 	    level--;
 	if (np->psh)
@@ -516,7 +516,7 @@ ShowValue(DATA * np, int *editing, Bool comment)
     int col = 0;
     int level;
 
-    if (editing != 0) {
+    if (editing != NULL) {
 	editing[0] =
 	    editing[1] = 0;
     }
@@ -528,7 +528,7 @@ ShowValue(DATA * np, int *editing, Bool comment)
 	if (np->cmd != EOS) {
 	    for (level = LevelOf(np); level > 0; level--)
 		screen_puts(". ");
-	    if (editing != 0) {
+	    if (editing != NULL) {
 		screen_set_reverse(TRUE);
 		screen_printf(" %c>>", cmd);
 		screen_set_reverse(FALSE);
@@ -536,27 +536,27 @@ ShowValue(DATA * np, int *editing, Bool comment)
 		screen_printf(" %c: ", cmd);
 	    }
 
-	    if (editing != 0) {
+	    if (editing != NULL) {
 		*editing = screen_col();
 		screen_set_reverse(TRUE);
 	    }
 
-	    if ((cmd == R_PAREN) || ((editing != 0) && !comment))
+	    if ((cmd == R_PAREN) || ((editing != NULL) && !comment))
 		screen_printf("%*.*s", use_width, use_width, " ");
 	    else if (np->psh)
 		screen_putc(L_PAREN);
 	    else
 		putval(np->val);
 
-	    if (editing != 0)
+	    if (editing != NULL)
 		screen_set_reverse(FALSE);
 
 	    if (!np->psh) {
 		screen_puts(" ");
-		if (editing != 0)
+		if (editing != NULL)
 		    screen_set_bold(TRUE);
 		putval(np->sum);
-		if (editing != 0)
+		if (editing != NULL)
 		    screen_set_bold(FALSE);
 	    }
 	    if (cmd == OP_INT || cmd == OP_TAX) {
@@ -565,14 +565,14 @@ ShowValue(DATA * np, int *editing, Bool comment)
 	    }
 
 	    col = screen_col();
-	    if (editing != 0)
+	    if (editing != NULL)
 		editing[1] = col;
 	    col += 3;
-	    if ((np->txt != 0) && screen_cols_left(col) > 3)
+	    if ((np->txt != NULL) && screen_cols_left(col) > 3)
 		screen_puts(" # ");
 	}
 
-	if ((np->txt != 0)
+	if ((np->txt != NULL)
 	    && screen_cols_left(col) > 0) {
 	    screen_printf("%.*s", screen_cols_left(col), np->txt);
 	}
@@ -611,7 +611,7 @@ ShowStatus(DATA * np, int opened)
     int top = CountData(top_data);
     DATA *last = EndOfData();
 
-    if (!show_error && np != 0 && isVisible()) {
+    if (!show_error && np != NULL && isVisible()) {
 	char buffer[BUFSIZ];
 
 	screen_set_bold(TRUE);
@@ -730,11 +730,11 @@ static void
 PutScript(const char *path)
 {
     DATA *np;
-    FILE *fp = (path && *path) ? fopen(path, "w") : 0;
+    FILE *fp = (path && *path) ? fopen(path, "w") : NULL;
     char buffer[MAXBFR];
     int count = 0;
 
-    if (fp == 0) {
+    if (fp == NULL) {
 	ShowError("Cannot open output", path);
 	return;
     }
@@ -742,8 +742,8 @@ PutScript(const char *path)
     (void) sprintf(buffer, "Writing results to \"%s\"", path);
     ShowInfo(buffer);
 
-    for (np = all_data->next; np != 0; np = np->next) {
-	if (np->cmd == EOS && np->next == 0)
+    for (np = all_data->next; np != NULL; np = np->next) {
+	if (np->cmd == EOS && np->next == NULL)
 	    break;
 	(void) fprintf(fp, "%c", np->cmd);
 	if (np->psh)
@@ -755,7 +755,7 @@ PutScript(const char *path)
 	if (np->cmd == OP_INT
 	    || np->cmd == OP_TAX)
 	    (void) fprintf(fp, "\t%s", Format(buffer, np->aux));
-	if (np->txt != 0)
+	if (np->txt != NULL)
 	    (void) fprintf(fp, "\t#%s", np->txt);
 	(void) fprintf(fp, "\n");
 	count++;
@@ -793,17 +793,17 @@ PushScripts(const char *script)
 {
     SSTACK *p = SALLOC(SSTACK);
 
-    if (p == 0)
+    if (p == NULL)
 	failed("PushScripts");
 
-    assert(p != 0);
+    assert(p != NULL);
 
     p->next = sstack;
     p->sfp = scriptFP;
     p->sscripts = scriptv;
     sstack = p;
 
-    scriptFP = 0;
+    scriptFP = NULL;
     scriptv = (char **) calloc(2, sizeof(char *));
     scriptv[0] = AllocString(script);
 }
@@ -816,14 +816,14 @@ PopScripts(void)
 {
     SSTACK *p;
 
-    scriptFP = 0;
-    scriptv = 0;
-    if ((p = sstack) != 0) {
+    scriptFP = NULL;
+    scriptv = NULL;
+    if ((p = sstack) != NULL) {
 	scriptFP = p->sfp;
 	scriptv = p->sscripts;
 	sstack = p->next;
     }
-    return (scriptFP != 0);
+    return (scriptFP != NULL);
 }
 
 /*
@@ -833,7 +833,7 @@ static void
 NextScript(void)
 {
     (void) fclose(scriptFP);
-    scriptFP = 0;
+    scriptFP = NULL;
     if (!*(++scriptv))
 	PopScripts();
 }
@@ -885,9 +885,9 @@ GetScript(void)
     while (IsScript()) {
 	int was_invisible = !isVisible();
 
-	if (scriptFP == 0) {
+	if (scriptFP == NULL) {
 	    scriptFP = fopen(*scriptv, "r");
-	    if (scriptFP == 0) {
+	    if (scriptFP == NULL) {
 		ShowError("Cannot read", *scriptv);
 		scriptv++;
 	    } else {
@@ -899,7 +899,7 @@ GetScript(void)
 	    }
 	    continue;
 	}
-	while (scriptFP != 0) {
+	while (scriptFP != NULL) {
 	    if ((c = ReadScript()) == EOF)
 		continue;
 	    if (c == '#' || c == COLON) {
@@ -1054,7 +1054,7 @@ InsertChar(char *buffer, int chr, int pos, int lmargin, int rmargin, int *offset
 	    }
 	    screen_insert_char(chr);
 	    screen_set_position(y, x + 1);
-	} else if (offset != 0) {
+	} else if (offset != NULL) {
 	    screen_set_position(y, lmargin);
 	    screen_delete_char();
 	    screen_set_position(y, x - 1);
@@ -1091,7 +1091,7 @@ DecimalPoint(char *buffer)
 {
     char *dot = strchr(buffer, sep_radix);
 
-    if (dot != 0)
+    if (dot != NULL)
 	return (int) (dot - buffer);
     return -1;
 }
@@ -1105,7 +1105,7 @@ Balance(DATA * np, int level)
 {
     int target = level;
 
-    while (np->prev != 0) {
+    while (np->prev != NULL) {
 	if (np->cmd == R_PAREN)
 	    level++;
 	else if (np->psh)
@@ -1114,7 +1114,7 @@ Balance(DATA * np, int level)
 	    break;		/* unbalanced */
 	np = np->prev;
     }
-    return (level == 0) ? np : 0;
+    return (level == 0) ? np : NULL;
 }
 
 static void
@@ -1231,7 +1231,7 @@ EditComment(DATA * np)
     int row;
     int editcols[3];
 
-    (void) strcpy(buffer, np->txt != 0 ? np->txt : "");
+    (void) strcpy(buffer, np->txt != NULL ? np->txt : "");
 
     ShowStatus(np, -1);
     row = ShowValue(np, editcols, TRUE) + 1;
@@ -1242,13 +1242,13 @@ EditComment(DATA * np)
     EditBuffer(buffer, sizeof(buffer), np);
     TrimString(buffer);
 
-    if (*buffer != EOS || (np->txt != 0)) {
-	if (np->txt != 0) {
+    if (*buffer != EOS || (np->txt != NULL)) {
+	if (np->txt != NULL) {
 	    if (!strcmp(buffer, np->txt))
 		return;		/* no change needed */
 	    free(np->txt);
 	}
-	np->txt = (*buffer != EOS) ? AllocString(buffer) : 0;
+	np->txt = (*buffer != EOS) ? AllocString(buffer) : NULL;
 	scriptCHG = TRUE;
     }
 }
@@ -1291,7 +1291,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 
     static char old_digit = EOS;	/* nonzero iff we have pending digit */
 
-    if (np == 0) {
+    if (np == NULL) {
 	*len_ = 0;
 	return 'q';
     }
@@ -1419,7 +1419,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 	 */
 	else if (isDigit(c)) {
 	    int limit = use_width;
-	    if (strchr(buffer, sep_radix) == 0)
+	    if (strchr(buffer, sep_radix) == NULL)
 		limit -= (1 + len_frac);
 	    if ((int) strlen(buffer) > limit) {
 		HadError();
@@ -1482,7 +1482,7 @@ EditValue(DATA * np, int *len_, Value * val_, int edit)
 static int
 NoValue(int len)
 {
-    return ((len == 0 || len == -2) && (all_data->next->next != 0));
+    return ((len == 0 || len == -2) && (all_data->next->next != NULL));
 }
 
 /*
@@ -1554,7 +1554,7 @@ Recompute(DATA * base)
     int level = LevelOf(np);
     Bool same;
 
-    while (np != 0) {
+    while (np != NULL) {
 	if (np->psh) {
 	    np->sum = 0.0;
 	    level++;
@@ -1563,7 +1563,7 @@ Recompute(DATA * base)
 		level--;
 		np->val = np->prev->sum;
 		op = Balance(np, level);
-		if (op == 0) {
+		if (op == NULL) {
 		    op = all_data;
 		    level = 0;
 		}
@@ -1814,7 +1814,7 @@ ColonCommand(DATA * np)
 		break;
 	    case 'e':
 		np = all_data->next;
-		while (np->next != 0)
+		while (np->next != NULL)
 		    np = FreeData(np, TRUE);
 		save_top = top_data;
 		setval(np, OP_ADD, 0.0, FALSE);
@@ -1937,20 +1937,20 @@ ShowHelp(void)
 {
     DATA *save_data = all_data;
     DATA *save_top = top_data;
-    DATA *np = 0;
+    DATA *np = NULL;
     int end;
     int done = FALSE;
     char buffer[BUFSIZ];
 
-    if ((all_data = all_help) == 0) {
+    if ((all_data = all_help) == NULL) {
 	FILE *fp;
 
 	np = AllocData((DATA *) 0);	/* header line not shown */
 
-	assert(all_data != 0);
+	assert(all_data != NULL);
 
-	if ((fp = fopen(helpfile, "r")) != 0) {
-	    while (fgets(buffer, sizeof(buffer), fp) != 0) {
+	if ((fp = fopen(helpfile, "r")) != NULL) {
+	    while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		np = AllocData(np);
 		np->txt = AllocString(buffer);
 	    }
@@ -2065,7 +2065,7 @@ FindHelp(const char *program)
 	const char *path = getenv("PATH");
 	int j = 0, k;
 
-	if (path == 0)
+	if (path == NULL)
 	    path = "";
 	while (path[j] != EOS) {
 	    int l;
@@ -2362,7 +2362,7 @@ main(int argc, char **argv)
     /*
      * Allocate some dummy data so we can propagate results from it.
      */
-    all_data = 0;
+    all_data = NULL;
     for (j = 0; j < 2; j++) {
 	setval(AllocData((DATA *) 0), OP_ADD, 0.0, FALSE);
     }
@@ -2372,11 +2372,11 @@ main(int argc, char **argv)
      * If we have input scripts, save a pointer to the list:
      */
     if (optind < argc) {
-	if (top_output == 0
+	if (top_output == NULL
 	    && !Fexists(argv[optind]))
 	    top_output = argv[optind++];
 	scriptv = argv + optind;
-	for (j = 0; scriptv[j] != 0; j++) {
+	for (j = 0; scriptv[j] != NULL; j++) {
 	    (void) Ok2Read(scriptv[j]);
 	}
     } else {
@@ -2389,7 +2389,7 @@ main(int argc, char **argv)
     if (optind < argc && !top_output)
 	top_output = argv[argc - 1];
 
-    if (top_output == 0)
+    if (top_output == NULL)
 	top_output = "";
 
     /*

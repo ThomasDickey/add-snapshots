@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright 1995-2021,2024 by Thomas E. Dickey                               *
+ * Copyright 1995-2024,2025 by Thomas E. Dickey                               *
  * All Rights Reserved.                                                       *
  *                                                                            *
  * Permission is hereby granted, free of charge, to any person obtaining a    *
@@ -26,7 +26,7 @@
  * authorization.                                                             *
  ******************************************************************************/
 
-/* $Id: add.h,v 1.23 2024/09/16 23:13:14 tom Exp $
+/* $Id: add.h,v 1.24 2025/09/14 00:12:09 tom Exp $
  *
  * common definitions for 'add' utility
  */
@@ -230,7 +230,7 @@ extern int optind;
 #define isReturn(c)     ((c) == '\r' || (c) == '\n')
 #define isDigit(c)      (isAscii(c) && isdigit(UCH(c)))
 
-#define LastData(np)    ((np)->next == 0)
+#define LastData(np)    ((np)->next == NULL)
 
 	/* Operators */
 #define	OP_ADD	'+'

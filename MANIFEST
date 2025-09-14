@@ -1,4 +1,4 @@
-MANIFEST for add, version t20240916
+MANIFEST for add, version t20250914
 --------------------------------------------------------------------------------
 MANIFEST                        this file
 CHANGES                         summary of changes to 'add'
@@ -12,7 +12,6 @@ add.hlp                         help-file for "add"
 config.guess                    configure utility script
 config.sub                      configure utility script
 config_h.in                     template for config.h
-configure                       configure script
 configure.in                    configure-script template
 curses.c                        curses-interface for 'add'
 install-sh                      generic install-script

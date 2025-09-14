@@ -1,4 +1,10 @@
-$Id: CHANGES,v 1.65 2024/09/16 07:56:33 tom Exp $
+$Id: CHANGES,v 1.67 2025/09/14 00:14:09 tom Exp $
+
+2025/09/14
+----------
+	+ minor compiler-warning fixes.
+
+	+ updated configure script to reduce compiler-warnings in checks.
 
 2024/09/16
 ----------

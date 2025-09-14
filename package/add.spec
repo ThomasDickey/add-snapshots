@@ -1,14 +1,12 @@
-Summary: full-screen editing calculator
-%define AppProgram add
-%define AppVersion 20240916
-# $Id: add.spec,v 1.25 2024/09/15 23:27:45 tom Exp $
-Name: %{AppProgram}
-Version: %{AppVersion}
+Summary: Full-screen editing calculator
+# $Id: add.spec,v 1.27 2025/09/14 09:50:39 tom Exp $
+Name: add
+Version: 20250914
 Release: 1
 License: MIT
 Group: Applications/Development
 URL: https://invisible-island.net/%{AppProgram}/
-Source0: %{AppProgram}-%{AppVersion}.tgz
+Source0: %{name}-%{version}.tgz
 Packager: Thomas Dickey <dickey@invisible-island.net>
 
 %description
@@ -28,7 +26,7 @@ first).
 # no need for debugging symbols...
 %define debug_package %{nil}
 
-%setup -q -n %{AppProgram}-%{AppVersion}
+%setup -q -n %{name}-%{version}
 
 %build
 
@@ -38,7 +36,7 @@ INSTALL_PROGRAM='${INSTALL}' \
  --prefix=%{_prefix} \
  --bindir=%{_bindir} \
  --libdir=%{_libdir} \
- --datadir=%{_datarootdir}/%{AppProgram} \
+ --datadir=%{_datarootdir}/%{name} \
  --mandir=%{_mandir} \
  --enable-warnings \
  --enable-stdnoreturn \
@@ -51,19 +49,22 @@ make
 
 make install                    DESTDIR=$RPM_BUILD_ROOT
 
-strip $RPM_BUILD_ROOT%{_bindir}/%{AppProgram}
+strip $RPM_BUILD_ROOT%{_bindir}/%{name}
 
 %clean
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
-%{_bindir}/%{AppProgram}
-%{_datarootdir}/%{AppProgram}/%{AppProgram}.hlp
-%{_mandir}/man1/%{AppProgram}.*
+%{_bindir}/%{name}
+%{_datarootdir}/%{name}/%{name}.hlp
+%{_mandir}/man1/%{name}.*
 
 %changelog
 # each patch should add its ChangeLog entries here
+
+* Sat Sep 13 2025 Thomas E. Dickey
+- testing add 20250914-1
 
 * Wed Dec 22 2021 Thomas Dickey
 - move ".hlp" file to subdirectory, omit "x+" from package
